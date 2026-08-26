@@ -23,6 +23,7 @@ namespace BO1Tracker
 
         private FileSystemWatcher? _watcher;
         private bool _locked = false;
+        private readonly MainWindow? _owner;
 
         public OverlayMode Mode { get; private set; }
 
@@ -49,10 +50,11 @@ namespace BO1Tracker
         private static readonly Color ColYellowDark  = (Color)ColorConverter.ConvertFromString("#B8860B");
         private static readonly Color ColBgYellow    = (Color)ColorConverter.ConvertFromString("#3D3000");
 
-        public OverlayWindow(OverlayMode mode = OverlayMode.Bo1Bonus)
+        public OverlayWindow(OverlayMode mode = OverlayMode.Bo1Bonus, MainWindow? owner = null)
         {
             InitializeComponent();
             Mode = mode;
+            _owner = owner;
             Loaded += OnLoaded;
         }
 
@@ -137,18 +139,94 @@ namespace BO1Tracker
         }
 
         // ── Construction cartes ──────────────────────────────────────────
-        private void RebuildCards()
+        internal void RebuildCards()
         {
             CardsPanel.Children.Clear();
             switch (Mode)
             {
-                case OverlayMode.Bo1Bonus: BuildBonusCards(_bo1Clicks); break;
-                case OverlayMode.Bo2Bonus: BuildBonusCards(_bo2Clicks); break;
-                case OverlayMode.Box:      BuildBoxCards();                              break;
+                case OverlayMode.Bo1Bonus:
+                    if (_owner != null) BuildBonusCardsLive(_owner.CurrentDropsForOverlay, _owner.SelectedForOverlay, isBo2: false);
+                    else                 BuildBonusCards(_bo1Clicks);
+                    break;
+                case OverlayMode.Bo2Bonus:
+                    if (_owner != null) BuildBonusCardsLive(_owner.CurrentBo2DropsForOverlay, _owner.Bo2SelectedForOverlay, isBo2: true);
+                    else                 BuildBonusCards(_bo2Clicks);
+                    break;
+                case OverlayMode.Box:
+                    BuildBoxCards();
+                    break;
             }
         }
 
-        // ── Cartes Bonus ─────────────────────────────────────────────────
+        /// <summary>Affiche TOUS les bonus disponibles (verts si déjà cliqués) et permet de cliquer
+        /// directement dans l'overlay pour les activer/désactiver, en répercutant sur le tracker principal.</summary>
+        private void BuildBonusCardsLive(List<DropItem> drops, HashSet<string> selected, bool isBo2)
+        {
+            foreach (var drop in drops)
+                CardsPanel.Children.Add(MakeLiveBonusCard(drop, selected.Contains(drop.Id), isBo2));
+
+            bool empty = CardsPanel.Children.Count == 0;
+            EmptyText.Text        = "Sélectionne une map dans le tracker...";
+            EmptyText.Visibility  = empty ? Visibility.Visible  : Visibility.Collapsed;
+            CardsPanel.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private Border MakeLiveBonusCard(DropItem drop, bool isSelected, bool isBo2)
+        {
+            var bgColor     = isSelected ? ColAccentDark : ColBgCard;
+            var borderColor = isSelected ? ColAccent     : ColBorder;
+            var labelColor  = isSelected ? ColAccentLight : ColTextSecond;
+
+            var img = new Image
+            {
+                Width = 52, Height = 52, Stretch = Stretch.Uniform,
+                Margin = new Thickness(0, 0, 0, 6),
+                Source = TryLoadImage(drop.ImagePath),
+            };
+
+            var lblBlock = new TextBlock
+            {
+                Text          = drop.Label.ToUpper(),
+                FontFamily    = new FontFamily("Consolas"),
+                FontSize      = 11,
+                FontWeight    = FontWeights.SemiBold,
+                TextAlignment = TextAlignment.Center,
+                TextWrapping  = TextWrapping.Wrap,
+                Foreground    = new SolidColorBrush(labelColor),
+                MaxWidth      = 90,
+            };
+
+            var stack = new StackPanel { Orientation = Orientation.Vertical, HorizontalAlignment = HorizontalAlignment.Center };
+            stack.Children.Add(img);
+            stack.Children.Add(lblBlock);
+
+            var card = new Border
+            {
+                Child           = stack,
+                MinWidth        = 96,
+                Padding         = new Thickness(14, 12, 14, 12),
+                CornerRadius    = new CornerRadius(10),
+                BorderThickness = new Thickness(isSelected ? 2 : 1),
+                Background      = new SolidColorBrush(bgColor),
+                BorderBrush     = new SolidColorBrush(borderColor),
+                Margin          = new Thickness(0, 0, 12, 0),
+                Cursor          = Cursors.Hand,
+            };
+
+            if (isSelected)
+                card.Effect = new DropShadowEffect { Color = ColAccent, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.55 };
+
+            card.MouseLeftButtonUp += (_, _) =>
+            {
+                if (_owner == null) return;
+                if (isBo2) _owner.ToggleBo2DropFromOverlay(drop.Id);
+                else       _owner.ToggleDropFromOverlay(drop.Id);
+                RebuildCards();
+            };
+
+            return card;
+        }
+
         private void BuildBonusCards(List<(int Order, string Label, string ImagePath)> clicks)
         {
             int maxOrder = clicks.Count > 0 ? clicks.Max(c => c.Order) : 0;
@@ -163,8 +241,6 @@ namespace BO1Tracker
 
         private Border MakeBonusCard(string label, string imagePath, int order, bool isLast)
         {
-            bool isSelected = true; // dans l'overlay, on n'affiche que les bonus déjà cliqués
-
             var bgColor     = isLast ? ColBgYellow  : ColAccentDark;
             var borderColor = isLast ? ColYellow     : ColAccent;
             var labelColor  = isLast ? ColYellow     : ColAccentLight;

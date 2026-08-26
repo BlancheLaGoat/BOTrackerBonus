@@ -235,7 +235,7 @@ public partial class MainWindow : Window
     // c'est l'identifiant du LOGICIEL, pas d'un compte. Tous les
     // utilisateurs de l'app partagent ce même Client ID, mais chacun
     // se connecte ensuite avec SON PROPRE compte Twitch.
-    private const string TwitchClientId = "7rqkqvjo28olg68jkf0c5ss01r9pbs";
+    private const string TwitchClientId = "COLLE_TON_CLIENT_ID_ICI";
 
     private TwitchConfig _twitchConfig = new();
     private string?      _twitchAccessToken = null;
@@ -1473,6 +1473,7 @@ public partial class MainWindow : Window
         RenderHistory();
         UpdateMapInlineBadge();
         SaveState();
+        RefreshOverlayIfOpen();
     }
 
     // ================================================================
@@ -1512,6 +1513,7 @@ public partial class MainWindow : Window
 
         if (_currentMap != null) { RefreshAvailableDrops(); RenderDrops(); RenderHistory(); }
         SaveState();
+        RefreshOverlayIfOpen();
     }
 
     // ================================================================
@@ -1744,6 +1746,7 @@ public partial class MainWindow : Window
         }
         RenderDrops();
         SaveState();
+        RefreshOverlayIfOpen();
     }
 
     private void FinishCycle()
@@ -1754,6 +1757,7 @@ public partial class MainWindow : Window
         var anim = new DoubleAnimation(0.15, 1.0, TimeSpan.FromMilliseconds(400)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
         DropsPanel.BeginAnimation(OpacityProperty, anim);
         RenderDrops(); RenderHistory(); SaveState();
+        RefreshOverlayIfOpen();
     }
 
     // ================================================================
@@ -1783,10 +1787,10 @@ public partial class MainWindow : Window
     }
 
     private void ResetCycleButton_Click(object sender, RoutedEventArgs e)
-        { _selected = []; _clickOrder = []; RenderDrops(); SaveState(); }
+        { _selected = []; _clickOrder = []; RenderDrops(); SaveState(); RefreshOverlayIfOpen(); }
 
     private void ResetHistoryButton_Click(object sender, RoutedEventArgs e)
-        { _cycleHistory = []; _cycleCount = 0; RenderHistory(); SaveState(); }
+        { _cycleHistory = []; _cycleCount = 0; RenderHistory(); SaveState(); RefreshOverlayIfOpen(); }
 
     // ================================================================
     //  AFFICHAGE EMPLACEMENTS BOÎTE
@@ -1907,11 +1911,14 @@ public partial class MainWindow : Window
     // ── Overlay OBS ────────────────────────────────────────────────────
     private OverlayWindow? _overlay;
 
+    /// <summary>Rafraîchit immédiatement l'overlay s'il est ouvert (sync temps réel, sans passer par le fichier).</summary>
+    private void RefreshOverlayIfOpen() => _overlay?.RebuildCards();
+
     private void OpenOverlay(OverlayMode mode)
     {
         if (_overlay == null || !_overlay.IsLoaded)
         {
-            _overlay = new OverlayWindow(mode);
+            _overlay = new OverlayWindow(mode, this);
             _overlay.Show();
         }
         else
@@ -1919,6 +1926,16 @@ public partial class MainWindow : Window
             _overlay.Activate();
         }
     }
+
+    // ── Accès pour l'overlay (mêmes listes que RenderDrops/RenderBo2Drops) ──
+    internal List<DropItem>  CurrentDropsForOverlay    => _currentDrops;
+    internal HashSet<string> SelectedForOverlay        => _selected;
+    internal List<DropItem>  CurrentBo2DropsForOverlay => _currentBo2Drops;
+    internal HashSet<string> Bo2SelectedForOverlay     => _bo2Selected;
+
+    /// <summary>Appelé par l'overlay quand on clique un bonus dedans : réutilise exactement la même logique que le tracker principal.</summary>
+    internal void ToggleDropFromOverlay(string id)    => ToggleDrop(id);
+    internal void ToggleBo2DropFromOverlay(string id) => ToggleBo2Drop(id);
 
     private void OverlayButton_Click     (object sender, RoutedEventArgs e) => OpenOverlay(OverlayMode.Box);
     private void OverlayBonusButton_Click(object sender, RoutedEventArgs e) => OpenOverlay(OverlayMode.Bo1Bonus);
@@ -2107,6 +2124,7 @@ public partial class MainWindow : Window
         RenderBo2Drops();
         RenderBo2History();
         SaveState();
+        RefreshOverlayIfOpen();
     }
 
     private void ResetBo2CycleState()
@@ -2155,6 +2173,7 @@ public partial class MainWindow : Window
 
         if (_currentBo2Map != null) { RefreshBo2AvailableDrops(); RenderBo2Drops(); RenderBo2History(); }
         SaveState();
+        RefreshOverlayIfOpen();
     }
 
     // Met à jour la liste des drops BO2 actifs SANS effacer le cycle en cours.
@@ -2244,6 +2263,7 @@ public partial class MainWindow : Window
         }
         RenderBo2Drops();
         SaveState();
+        RefreshOverlayIfOpen();
     }
 
     private void FinishBo2Cycle()
@@ -2254,6 +2274,7 @@ public partial class MainWindow : Window
         var anim = new DoubleAnimation(0.15, 1.0, TimeSpan.FromMilliseconds(400)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
         Bo2DropsPanel.BeginAnimation(OpacityProperty, anim);
         RenderBo2Drops(); RenderBo2History(); SaveState();
+        RefreshOverlayIfOpen();
     }
 
     private void RenderBo2History()
@@ -2275,10 +2296,10 @@ public partial class MainWindow : Window
     }
 
     private void Bo2ResetCycleButton_Click(object sender, RoutedEventArgs e)
-        { _bo2Selected = []; _bo2ClickOrder = []; RenderBo2Drops(); SaveState(); }
+        { _bo2Selected = []; _bo2ClickOrder = []; RenderBo2Drops(); SaveState(); RefreshOverlayIfOpen(); }
 
     private void Bo2ResetHistoryButton_Click(object sender, RoutedEventArgs e)
-        { _bo2CycleHistory = []; _bo2CycleCount = 0; RenderBo2History(); SaveState(); }
+        { _bo2CycleHistory = []; _bo2CycleCount = 0; RenderBo2History(); SaveState(); RefreshOverlayIfOpen(); }
 
 
 }

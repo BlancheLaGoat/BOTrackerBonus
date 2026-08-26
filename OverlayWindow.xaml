@@ -61,11 +61,12 @@
         </Style>
     </Window.Resources>
 
-    <Grid MouseLeftButtonDown="DragHandle_MouseLeftButtonDown">
+    <Grid>
         <StackPanel>
 
-            <!-- Barre de contrôle (toujours visible) -->
-            <Border Background="#DD111111" CornerRadius="8,8,0,0" Padding="10,6">
+            <!-- Barre de contrôle (toujours visible, seule zone de déplacement de la fenêtre) -->
+            <Border Background="#DD111111" CornerRadius="8,8,0,0" Padding="10,6"
+                    MouseLeftButtonDown="DragHandle_MouseLeftButtonDown">
                 <DockPanel>
                     <!-- Sélecteur de mode -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
