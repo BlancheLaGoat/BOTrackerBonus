@@ -145,11 +145,11 @@ namespace BO1Tracker
             switch (Mode)
             {
                 case OverlayMode.Bo1Bonus:
-                    if (_owner != null) BuildBonusCardsLive(_owner.CurrentDropsForOverlay, _owner.SelectedForOverlay, isBo2: false);
+                    if (_owner != null) BuildBonusCardsLive(_owner.CurrentDropsForOverlay, _owner.SelectedForOverlay, _owner.ClickOrderForOverlay, isBo2: false);
                     else                 BuildBonusCards(_bo1Clicks);
                     break;
                 case OverlayMode.Bo2Bonus:
-                    if (_owner != null) BuildBonusCardsLive(_owner.CurrentBo2DropsForOverlay, _owner.Bo2SelectedForOverlay, isBo2: true);
+                    if (_owner != null) BuildBonusCardsLive(_owner.CurrentBo2DropsForOverlay, _owner.Bo2SelectedForOverlay, _owner.Bo2ClickOrderForOverlay, isBo2: true);
                     else                 BuildBonusCards(_bo2Clicks);
                     break;
                 case OverlayMode.Box:
@@ -158,12 +158,18 @@ namespace BO1Tracker
             }
         }
 
-        /// <summary>Affiche TOUS les bonus disponibles (verts si déjà cliqués) et permet de cliquer
-        /// directement dans l'overlay pour les activer/désactiver, en répercutant sur le tracker principal.</summary>
-        private void BuildBonusCardsLive(List<DropItem> drops, HashSet<string> selected, bool isBo2)
+        /// <summary>Affiche TOUS les bonus disponibles (verts si déjà cliqués, orange pour le dernier en date)
+        /// et permet de cliquer directement dans l'overlay pour les activer/désactiver.</summary>
+        private void BuildBonusCardsLive(List<DropItem> drops, HashSet<string> selected, List<ClickedDrop> clickOrder, bool isBo2)
         {
+            int maxOrder = clickOrder.Count > 0 ? clickOrder.Max(c => c.Order) : 0;
             foreach (var drop in drops)
-                CardsPanel.Children.Add(MakeLiveBonusCard(drop, selected.Contains(drop.Id), isBo2));
+            {
+                var click = clickOrder.FirstOrDefault(c => c.Drop.Id == drop.Id);
+                int? order = click?.Order;
+                bool isLast = order.HasValue && order.Value == maxOrder && maxOrder > 0;
+                CardsPanel.Children.Add(MakeLiveBonusCard(drop, selected.Contains(drop.Id), order, isLast, isBo2));
+            }
 
             bool empty = CardsPanel.Children.Count == 0;
             EmptyText.Text        = "Sélectionne une map dans le tracker...";
@@ -171,11 +177,30 @@ namespace BO1Tracker
             CardsPanel.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         }
 
-        private Border MakeLiveBonusCard(DropItem drop, bool isSelected, bool isBo2)
+        private Border MakeLiveBonusCard(DropItem drop, bool isSelected, int? order, bool isLast, bool isBo2)
         {
-            var bgColor     = isSelected ? ColAccentDark : ColBgCard;
-            var borderColor = isSelected ? ColAccent     : ColBorder;
-            var labelColor  = isSelected ? ColAccentLight : ColTextSecond;
+            var bgColor     = isLast ? ColBgYellow    : (isSelected ? ColAccentDark  : ColBgCard);
+            var borderColor = isLast ? ColYellow      : (isSelected ? ColAccent      : ColBorder);
+            var labelColor  = isLast ? ColYellow      : (isSelected ? ColAccentLight : ColTextSecond);
+            var badgeColor  = isLast ? ColYellowDark  : ColAccent;
+
+            var orderBadge = new Border
+            {
+                Background          = new SolidColorBrush(badgeColor),
+                CornerRadius        = new CornerRadius(10),
+                Padding             = new Thickness(6, 1, 6, 1),
+                Margin              = new Thickness(0, 0, 0, 4),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Visibility          = order.HasValue ? Visibility.Visible : Visibility.Collapsed,
+                Child = new TextBlock
+                {
+                    Text       = order.HasValue ? $"{order}" : "",
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize   = 15,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                }
+            };
 
             var img = new Image
             {
@@ -197,7 +222,9 @@ namespace BO1Tracker
             };
 
             var stack = new StackPanel { Orientation = Orientation.Vertical, HorizontalAlignment = HorizontalAlignment.Center };
+            stack.Children.Add(orderBadge);
             stack.Children.Add(img);
+            stack.Children.Add(new Border { Height = 6 });
             stack.Children.Add(lblBlock);
 
             var card = new Border
@@ -206,15 +233,18 @@ namespace BO1Tracker
                 MinWidth        = 96,
                 Padding         = new Thickness(14, 12, 14, 12),
                 CornerRadius    = new CornerRadius(10),
-                BorderThickness = new Thickness(isSelected ? 2 : 1),
+                BorderThickness = new Thickness(isSelected || isLast ? 2 : 1),
                 Background      = new SolidColorBrush(bgColor),
                 BorderBrush     = new SolidColorBrush(borderColor),
                 Margin          = new Thickness(0, 0, 12, 0),
                 Cursor          = Cursors.Hand,
             };
 
-            if (isSelected)
-                card.Effect = new DropShadowEffect { Color = ColAccent, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.55 };
+            card.Effect = isLast
+                ? new DropShadowEffect { Color = ColYellow, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.6 }
+                : isSelected
+                    ? new DropShadowEffect { Color = ColAccent, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.55 }
+                    : null;
 
             card.MouseLeftButtonUp += (_, _) =>
             {

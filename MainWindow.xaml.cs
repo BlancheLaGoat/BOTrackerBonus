@@ -1930,8 +1930,10 @@ public partial class MainWindow : Window
     // ── Accès pour l'overlay (mêmes listes que RenderDrops/RenderBo2Drops) ──
     internal List<DropItem>  CurrentDropsForOverlay    => _currentDrops;
     internal HashSet<string> SelectedForOverlay        => _selected;
+    internal List<ClickedDrop> ClickOrderForOverlay    => _clickOrder;
     internal List<DropItem>  CurrentBo2DropsForOverlay => _currentBo2Drops;
     internal HashSet<string> Bo2SelectedForOverlay     => _bo2Selected;
+    internal List<ClickedDrop> Bo2ClickOrderForOverlay => _bo2ClickOrder;
 
     /// <summary>Appelé par l'overlay quand on clique un bonus dedans : réutilise exactement la même logique que le tracker principal.</summary>
     internal void ToggleDropFromOverlay(string id)    => ToggleDrop(id);
