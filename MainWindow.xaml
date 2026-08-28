@@ -802,7 +802,7 @@
         <Rectangle x:Name="Bo2TankSeparator" Grid.Row="14"
                    Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Visibility="Collapsed" />
 
-        <TextBlock x:Name="Bo2TankLabelPanel" Grid.Row="15" Text="BONUS DES TANKS"
+        <TextBlock x:Name="Bo2TankLabelPanel" Grid.Row="15" Text="BONUS"
                    Style="{StaticResource SectionLabelStyle}" Visibility="Collapsed" />
 
         <StackPanel x:Name="Bo2TankContentPanel" Orientation="Horizontal" Grid.Row="16" Margin="0,0,0,24" Visibility="Collapsed">
