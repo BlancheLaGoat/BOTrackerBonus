@@ -1,4 +1,4 @@
-name: Build BO1Tracker.exe
+name: Build BlackOpsTracker.exe
 
 on:
   push:
@@ -35,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: BO1Tracker-windows
-          path: publish/BO1Tracker.exe
+          path: publish/BlackOpsTracker.exe
 
       - name: Publier/mettre à jour la Release publique "latest"
         uses: softprops/action-gh-release@v2
@@ -43,4 +43,4 @@ jobs:
           tag_name: latest
           name: "Dernière version"
           body: "Compilation automatique la plus récente. Lien direct ci-dessous."
-          files: publish/BO1Tracker.exe
+          files: publish/BlackOpsTracker.exe
