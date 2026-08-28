@@ -89,6 +89,18 @@
                                       BorderThickness="1"
                                       Cursor="Hand"
                                       Click="TwitchTabButton_Click" />
+                        <ToggleButton x:Name="ResetTrackerTabButton"
+                                      Content="RESET"
+                                      IsChecked="False"
+                                      FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                                      Padding="14,5"
+                                      Margin="4,0,0,0"
+                                      Background="{StaticResource BrushBgCard}"
+                                      Foreground="{StaticResource BrushTextSecondary}"
+                                      BorderBrush="{StaticResource BrushBorder}"
+                                      BorderThickness="1"
+                                      Cursor="Hand"
+                                      Click="ResetTrackerTabButton_Click" />
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -431,16 +443,35 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />   <!-- 0  Label map BO2 -->
             <RowDefinition Height="Auto" />   <!-- 1  Boutons maps BO2 -->
+            <!-- ── MANCHES SPÉCIALES (Die Rise uniquement) ── -->
+            <RowDefinition Height="Auto" />   <!-- 2  Sep manches spéciales -->
+            <RowDefinition Height="Auto" />   <!-- 3  Label manches spéciales -->
+            <RowDefinition Height="Auto" />   <!-- 4  Contrôles manches spéciales -->
+            <RowDefinition Height="Auto" />   <!-- 5  Historique manches spéciales -->
+            <!-- ── MANCHES SPÉCIALES (Mob of the Dead uniquement) ── -->
+            <RowDefinition Height="Auto" />   <!-- 6  Sep manches spéciales Mob -->
+            <RowDefinition Height="Auto" />   <!-- 7  Label manches spéciales Mob -->
+            <RowDefinition Height="Auto" />   <!-- 8  Contrôles manches spéciales Mob -->
+            <RowDefinition Height="Auto" />   <!-- 9  Historique manches spéciales Mob -->
+            <!-- ── MANCHES SPÉCIALES (Origins, Panzers uniquement) ── -->
+            <RowDefinition Height="Auto" />   <!-- 10 Sep manches spéciales Panzer -->
+            <RowDefinition Height="Auto" />   <!-- 11 Label manches spéciales Panzer -->
+            <RowDefinition Height="Auto" />   <!-- 12 Contrôles manches spéciales Panzer -->
+            <RowDefinition Height="Auto" />   <!-- 13 Historique manches spéciales Panzer -->
+            <!-- ── BONUS DES TANKS (Origins uniquement, 3 onglets manuels) ── -->
+            <RowDefinition Height="Auto" />   <!-- 14 Sep tanks -->
+            <RowDefinition Height="Auto" />   <!-- 15 Label + onglets tanks -->
+            <RowDefinition Height="Auto" />   <!-- 16 Contrôles + historique tank actif -->
             <!-- ── TOGGLE BONUS BO2 ── -->
-            <RowDefinition Height="Auto" />   <!-- 2  Sep options -->
-            <RowDefinition Height="Auto" />   <!-- 3  Label toggle bonus -->
-            <RowDefinition Height="Auto" />   <!-- 4  Toggle buttons -->
+            <RowDefinition Height="Auto" />   <!-- 17 Sep options -->
+            <RowDefinition Height="Auto" />   <!-- 18 Label toggle bonus -->
+            <RowDefinition Height="Auto" />   <!-- 19 Toggle buttons -->
             <!-- ── TRACKER BONUS BO2 ── -->
-            <RowDefinition Height="Auto" />   <!-- 5  Sep bonus -->
-            <RowDefinition Height="Auto" />   <!-- 6  Labels bonus -->
-            <RowDefinition Height="Auto" />   <!-- 7  Drops panel -->
-            <RowDefinition Height="Auto" />   <!-- 8  Reset buttons bonus -->
-            <RowDefinition Height="Auto" />   <!-- 9  Historique bonus -->
+            <RowDefinition Height="Auto" />   <!-- 20 Sep bonus -->
+            <RowDefinition Height="Auto" />   <!-- 21 Labels bonus -->
+            <RowDefinition Height="Auto" />   <!-- 22 Drops panel -->
+            <RowDefinition Height="Auto" />   <!-- 23 Reset buttons bonus -->
+            <RowDefinition Height="Auto" />   <!-- 24 Historique bonus -->
         </Grid.RowDefinitions>
 
         <!-- En-tête CHOIX DE LA MAP BO2 -->
@@ -454,28 +485,465 @@
                    Orientation="Horizontal" Margin="0,0,0,16" />
 
         <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- MANCHES SPÉCIALES — DIE RISE UNIQUEMENT                     -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+
+        <Rectangle x:Name="Bo2DogSeparator" Grid.Row="2"
+                   Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Visibility="Collapsed" />
+
+        <TextBlock x:Name="Bo2DogLabel" Grid.Row="3" Text="MANCHES SPÉCIALES"
+                   Style="{StaticResource SectionLabelStyle}" Visibility="Collapsed" />
+
+        <StackPanel x:Name="Bo2DogControlsPanel" Grid.Row="4" Margin="0,0,0,16" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="Première manche :"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushTextSecondary}"
+                           FontFamily="Consolas" FontSize="13"
+                           Margin="0,0,10,0" />
+                <TextBox x:Name="Bo2DogRoundInput"
+                         Width="60" Height="32"
+                         FontFamily="Consolas" FontSize="14"
+                         VerticalContentAlignment="Center"
+                         HorizontalContentAlignment="Center"
+                         Background="{StaticResource BrushBgCard}"
+                         Foreground="{StaticResource BrushTextPrimary}"
+                         BorderBrush="{StaticResource BrushBorder}"
+                         BorderThickness="1"
+                         Margin="0,0,10,0"
+                         MaxLength="3"
+                         PreviewTextInput="Bo2DogRoundInput_PreviewTextInput" />
+                <Button x:Name="SetBo2DogRoundButton"
+                        Content="ENREGISTRER"
+                        Style="{StaticResource ResetButtonStyle}"
+                        Margin="0,0,10,0"
+                        Click="SetBo2DogRoundButton_Click" />
+                <Button x:Name="ResetBo2DogRoundsButton"
+                        Content="EFFACER"
+                        Style="{StaticResource ResetDangerButtonStyle}"
+                        Click="ResetBo2DogRoundsButton_Click" />
+            </StackPanel>
+
+            <StackPanel x:Name="Bo2DogNextRoundPanel" Orientation="Horizontal"
+                        Visibility="Collapsed" Margin="0,0,0,0">
+                <TextBlock Text="Prochaine manche :"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushTextSecondary}"
+                           FontFamily="Consolas" FontSize="13"
+                           Margin="0,0,10,0" />
+                <Border x:Name="Bo2DogNext4Badge"
+                        Background="{StaticResource BrushAccentDark}"
+                        BorderBrush="{StaticResource BrushAccent}"
+                        BorderThickness="1" CornerRadius="6"
+                        Padding="12,6" Margin="0,0,8,0"
+                        Cursor="Hand"
+                        MouseLeftButtonUp="Bo2DogNext4Badge_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="+4 → " FontFamily="Consolas" FontSize="13"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="Bo2DogNext4Text"
+                                   FontFamily="Consolas" FontSize="15" FontWeight="Bold"
+                                   Foreground="{StaticResource BrushAccentLight}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="Bo2DogNext5Badge"
+                        Background="{StaticResource BrushAccentDark}"
+                        BorderBrush="{StaticResource BrushAccent}"
+                        BorderThickness="1" CornerRadius="6"
+                        Padding="12,6" Margin="0,0,0,0"
+                        Cursor="Hand"
+                        MouseLeftButtonUp="Bo2DogNext5Badge_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="+5 → " FontFamily="Consolas" FontSize="13"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="Bo2DogNext5Text"
+                                   FontFamily="Consolas" FontSize="15" FontWeight="Bold"
+                                   Foreground="{StaticResource BrushAccentLight}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+
+        <Border x:Name="Bo2DogHistoryBox"
+                Grid.Row="5"
+                Background="{StaticResource BrushBgHistory}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="1" CornerRadius="10"
+                Padding="16,14" Margin="0,0,0,24"
+                Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock Text="HISTORIQUE DES MANCHES SPÉCIALES"
+                           Style="{StaticResource SectionLabelStyle}" />
+                <WrapPanel x:Name="Bo2DogHistoryPanel" Orientation="Horizontal" />
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- MANCHES SPÉCIALES — MOB OF THE DEAD UNIQUEMENT (+4/+5/+6)   -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+
+        <Rectangle x:Name="Bo2MobSeparator" Grid.Row="6"
+                   Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Visibility="Collapsed" />
+
+        <TextBlock x:Name="Bo2MobLabel" Grid.Row="7" Text="MANCHES SPÉCIALES"
+                   Style="{StaticResource SectionLabelStyle}" Visibility="Collapsed" />
+
+        <StackPanel x:Name="Bo2MobControlsPanel" Grid.Row="8" Margin="0,0,0,16" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="Première manche :"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushTextSecondary}"
+                           FontFamily="Consolas" FontSize="13"
+                           Margin="0,0,10,0" />
+                <TextBox x:Name="Bo2MobRoundInput"
+                         Width="60" Height="32"
+                         FontFamily="Consolas" FontSize="14"
+                         VerticalContentAlignment="Center"
+                         HorizontalContentAlignment="Center"
+                         Background="{StaticResource BrushBgCard}"
+                         Foreground="{StaticResource BrushTextPrimary}"
+                         BorderBrush="{StaticResource BrushBorder}"
+                         BorderThickness="1"
+                         Margin="0,0,10,0"
+                         MaxLength="3"
+                         PreviewTextInput="Bo2MobRoundInput_PreviewTextInput" />
+                <Button x:Name="SetBo2MobRoundButton"
+                        Content="ENREGISTRER"
+                        Style="{StaticResource ResetButtonStyle}"
+                        Margin="0,0,10,0"
+                        Click="SetBo2MobRoundButton_Click" />
+                <Button x:Name="ResetBo2MobRoundsButton"
+                        Content="EFFACER"
+                        Style="{StaticResource ResetDangerButtonStyle}"
+                        Click="ResetBo2MobRoundsButton_Click" />
+            </StackPanel>
+
+            <StackPanel x:Name="Bo2MobNextRoundPanel" Orientation="Horizontal"
+                        Visibility="Collapsed" Margin="0,0,0,0">
+                <TextBlock Text="Prochaine manche :"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushTextSecondary}"
+                           FontFamily="Consolas" FontSize="13"
+                           Margin="0,0,10,0" />
+                <Border x:Name="Bo2MobNext4Badge"
+                        Background="{StaticResource BrushAccentDark}"
+                        BorderBrush="{StaticResource BrushAccent}"
+                        BorderThickness="1" CornerRadius="6"
+                        Padding="12,6" Margin="0,0,8,0"
+                        Cursor="Hand"
+                        MouseLeftButtonUp="Bo2MobNext4Badge_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="+4 → " FontFamily="Consolas" FontSize="13"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="Bo2MobNext4Text"
+                                   FontFamily="Consolas" FontSize="15" FontWeight="Bold"
+                                   Foreground="{StaticResource BrushAccentLight}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="Bo2MobNext5Badge"
+                        Background="{StaticResource BrushAccentDark}"
+                        BorderBrush="{StaticResource BrushAccent}"
+                        BorderThickness="1" CornerRadius="6"
+                        Padding="12,6" Margin="0,0,8,0"
+                        Cursor="Hand"
+                        MouseLeftButtonUp="Bo2MobNext5Badge_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="+5 → " FontFamily="Consolas" FontSize="13"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="Bo2MobNext5Text"
+                                   FontFamily="Consolas" FontSize="15" FontWeight="Bold"
+                                   Foreground="{StaticResource BrushAccentLight}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="Bo2MobNext6Badge"
+                        Background="{StaticResource BrushAccentDark}"
+                        BorderBrush="{StaticResource BrushAccent}"
+                        BorderThickness="1" CornerRadius="6"
+                        Padding="12,6" Margin="0,0,0,0"
+                        Cursor="Hand"
+                        MouseLeftButtonUp="Bo2MobNext6Badge_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="+6 → " FontFamily="Consolas" FontSize="13"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="Bo2MobNext6Text"
+                                   FontFamily="Consolas" FontSize="15" FontWeight="Bold"
+                                   Foreground="{StaticResource BrushAccentLight}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+
+        <Border x:Name="Bo2MobHistoryBox"
+                Grid.Row="9"
+                Background="{StaticResource BrushBgHistory}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="1" CornerRadius="10"
+                Padding="16,14" Margin="0,0,0,24"
+                Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock Text="HISTORIQUE DES MANCHES SPÉCIALES"
+                           Style="{StaticResource SectionLabelStyle}" />
+                <WrapPanel x:Name="Bo2MobHistoryPanel" Orientation="Horizontal" />
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- MANCHES SPÉCIALES — ORIGINS UNIQUEMENT (PANZERS, +4/+5)     -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+
+        <Rectangle x:Name="Bo2PanzerSeparator" Grid.Row="10"
+                   Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Visibility="Collapsed" />
+
+        <TextBlock x:Name="Bo2PanzerLabel" Grid.Row="11" Text="PANZER"
+                   Style="{StaticResource SectionLabelStyle}" Visibility="Collapsed" />
+
+        <StackPanel x:Name="Bo2PanzerControlsPanel" Grid.Row="12" Margin="0,0,0,16" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="Première manche :"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushTextSecondary}"
+                           FontFamily="Consolas" FontSize="13"
+                           Margin="0,0,10,0" />
+                <TextBox x:Name="Bo2PanzerRoundInput"
+                         Width="60" Height="32"
+                         FontFamily="Consolas" FontSize="14"
+                         VerticalContentAlignment="Center"
+                         HorizontalContentAlignment="Center"
+                         Background="{StaticResource BrushBgCard}"
+                         Foreground="{StaticResource BrushTextPrimary}"
+                         BorderBrush="{StaticResource BrushBorder}"
+                         BorderThickness="1"
+                         Margin="0,0,10,0"
+                         MaxLength="3"
+                         PreviewTextInput="Bo2PanzerRoundInput_PreviewTextInput" />
+                <Button x:Name="SetBo2PanzerRoundButton"
+                        Content="ENREGISTRER"
+                        Style="{StaticResource ResetButtonStyle}"
+                        Margin="0,0,10,0"
+                        Click="SetBo2PanzerRoundButton_Click" />
+                <Button x:Name="ResetBo2PanzerRoundsButton"
+                        Content="EFFACER"
+                        Style="{StaticResource ResetDangerButtonStyle}"
+                        Click="ResetBo2PanzerRoundsButton_Click" />
+            </StackPanel>
+
+            <StackPanel x:Name="Bo2PanzerNextRoundPanel" Orientation="Horizontal"
+                        Visibility="Collapsed" Margin="0,0,0,0">
+                <TextBlock Text="Prochaine manche :"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushTextSecondary}"
+                           FontFamily="Consolas" FontSize="13"
+                           Margin="0,0,10,0" />
+                <Border x:Name="Bo2PanzerNext4Badge"
+                        Background="{StaticResource BrushAccentDark}"
+                        BorderBrush="{StaticResource BrushAccent}"
+                        BorderThickness="1" CornerRadius="6"
+                        Padding="12,6" Margin="0,0,8,0"
+                        Cursor="Hand"
+                        MouseLeftButtonUp="Bo2PanzerNext4Badge_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="+4 → " FontFamily="Consolas" FontSize="13"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="Bo2PanzerNext4Text"
+                                   FontFamily="Consolas" FontSize="15" FontWeight="Bold"
+                                   Foreground="{StaticResource BrushAccentLight}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="Bo2PanzerNext5Badge"
+                        Background="{StaticResource BrushAccentDark}"
+                        BorderBrush="{StaticResource BrushAccent}"
+                        BorderThickness="1" CornerRadius="6"
+                        Padding="12,6" Margin="0,0,0,0"
+                        Cursor="Hand"
+                        MouseLeftButtonUp="Bo2PanzerNext5Badge_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="+5 → " FontFamily="Consolas" FontSize="13"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="Bo2PanzerNext5Text"
+                                   FontFamily="Consolas" FontSize="15" FontWeight="Bold"
+                                   Foreground="{StaticResource BrushAccentLight}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+
+        <Border x:Name="Bo2PanzerHistoryBox"
+                Grid.Row="13"
+                Background="{StaticResource BrushBgHistory}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="1" CornerRadius="10"
+                Padding="16,14" Margin="0,0,0,24"
+                Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock Text="HISTORIQUE PANZER"
+                           Style="{StaticResource SectionLabelStyle}" />
+                <WrapPanel x:Name="Bo2PanzerHistoryPanel" Orientation="Horizontal" />
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- BONUS DES TANKS — ORIGINS UNIQUEMENT (3 colonnes, manuel)   -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+
+        <Rectangle x:Name="Bo2TankSeparator" Grid.Row="14"
+                   Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Visibility="Collapsed" />
+
+        <TextBlock x:Name="Bo2TankLabelPanel" Grid.Row="15" Text="BONUS DES TANKS"
+                   Style="{StaticResource SectionLabelStyle}" Visibility="Collapsed" />
+
+        <StackPanel x:Name="Bo2TankContentPanel" Orientation="Horizontal" Grid.Row="16" Margin="0,0,0,24" Visibility="Collapsed">
+
+            <!-- Colonne TANK 1 -->
+            <Border Background="{StaticResource BrushBgHistory}"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1" CornerRadius="10"
+                    Padding="14,12" Margin="0,0,10,0" Width="220" VerticalAlignment="Top">
+                <StackPanel>
+                    <TextBlock Text="TANK 1" Style="{StaticResource SectionLabelStyle}" Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBox x:Name="Bo2Tank1RoundInput"
+                                 Width="55" Height="30"
+                                 FontFamily="Consolas" FontSize="13"
+                                 VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                 Background="{StaticResource BrushBgCard}"
+                                 Foreground="{StaticResource BrushTextPrimary}"
+                                 BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                                 Margin="0,0,6,0" MaxLength="3"
+                                 PreviewTextInput="Bo2TankRoundInput_PreviewTextInput" />
+                        <Button Content="+" Tag="1" Width="30" Height="30"
+                                Style="{StaticResource ResetButtonStyle}" Padding="0"
+                                Click="AddBo2TankRoundButton_Click" />
+                    </StackPanel>
+                    <WrapPanel x:Name="Bo2Tank1HistoryPanel" Orientation="Horizontal" Margin="0,0,0,8" />
+                    <TextBlock Text="EFFACER" Tag="1" Foreground="#B05050"
+                               FontFamily="Consolas" FontSize="10" Cursor="Hand"
+                               MouseLeftButtonUp="ResetBo2TankRoundsButton_Click" />
+                </StackPanel>
+            </Border>
+
+            <!-- Colonne TANK 2 -->
+            <Border Background="{StaticResource BrushBgHistory}"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1" CornerRadius="10"
+                    Padding="14,12" Margin="0,0,10,0" Width="220" VerticalAlignment="Top">
+                <StackPanel>
+                    <TextBlock Text="TANK 2" Style="{StaticResource SectionLabelStyle}" Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBox x:Name="Bo2Tank2RoundInput"
+                                 Width="55" Height="30"
+                                 FontFamily="Consolas" FontSize="13"
+                                 VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                 Background="{StaticResource BrushBgCard}"
+                                 Foreground="{StaticResource BrushTextPrimary}"
+                                 BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                                 Margin="0,0,6,0" MaxLength="3"
+                                 PreviewTextInput="Bo2TankRoundInput_PreviewTextInput" />
+                        <Button Content="+" Tag="2" Width="30" Height="30"
+                                Style="{StaticResource ResetButtonStyle}" Padding="0"
+                                Click="AddBo2TankRoundButton_Click" />
+                    </StackPanel>
+                    <WrapPanel x:Name="Bo2Tank2HistoryPanel" Orientation="Horizontal" Margin="0,0,0,8" />
+                    <TextBlock Text="EFFACER" Tag="2" Foreground="#B05050"
+                               FontFamily="Consolas" FontSize="10" Cursor="Hand"
+                               MouseLeftButtonUp="ResetBo2TankRoundsButton_Click" />
+                </StackPanel>
+            </Border>
+
+            <!-- Colonne TANK 3 -->
+            <Border Background="{StaticResource BrushBgHistory}"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1" CornerRadius="10"
+                    Padding="14,12" Margin="0,0,10,0" Width="220" VerticalAlignment="Top">
+                <StackPanel>
+                    <TextBlock Text="TANK 3" Style="{StaticResource SectionLabelStyle}" Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBox x:Name="Bo2Tank3RoundInput"
+                                 Width="55" Height="30"
+                                 FontFamily="Consolas" FontSize="13"
+                                 VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                 Background="{StaticResource BrushBgCard}"
+                                 Foreground="{StaticResource BrushTextPrimary}"
+                                 BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                                 Margin="0,0,6,0" MaxLength="3"
+                                 PreviewTextInput="Bo2TankRoundInput_PreviewTextInput" />
+                        <Button Content="+" Tag="3" Width="30" Height="30"
+                                Style="{StaticResource ResetButtonStyle}" Padding="0"
+                                Click="AddBo2TankRoundButton_Click" />
+                    </StackPanel>
+                    <WrapPanel x:Name="Bo2Tank3HistoryPanel" Orientation="Horizontal" Margin="0,0,0,8" />
+                    <TextBlock Text="EFFACER" Tag="3" Foreground="#B05050"
+                               FontFamily="Consolas" FontSize="10" Cursor="Hand"
+                               MouseLeftButtonUp="ResetBo2TankRoundsButton_Click" />
+                </StackPanel>
+            </Border>
+
+            <!-- Colonne GÉNÉRATEURS -->
+            <Border Background="{StaticResource BrushBgHistory}"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1" CornerRadius="10"
+                    Padding="14,12" Width="220" VerticalAlignment="Top">
+                <StackPanel>
+                    <TextBlock Text="GÉNÉRATEURS" Style="{StaticResource SectionLabelStyle}" Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBox x:Name="Bo2GenRoundInput"
+                                 Width="55" Height="30"
+                                 FontFamily="Consolas" FontSize="13"
+                                 VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                 Background="{StaticResource BrushBgCard}"
+                                 Foreground="{StaticResource BrushTextPrimary}"
+                                 BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                                 Margin="0,0,6,0" MaxLength="3"
+                                 PreviewTextInput="Bo2TankRoundInput_PreviewTextInput" />
+                        <Button Content="+" Width="30" Height="30"
+                                Style="{StaticResource ResetButtonStyle}" Padding="0"
+                                Click="AddBo2GenRoundButton_Click" />
+                    </StackPanel>
+                    <WrapPanel x:Name="Bo2GenHistoryPanel" Orientation="Horizontal" Margin="0,0,0,8" />
+                    <TextBlock Text="EFFACER" Foreground="#B05050"
+                               FontFamily="Consolas" FontSize="10" Cursor="Hand"
+                               MouseLeftButtonUp="ResetBo2GenRoundsButton_Click" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
         <!-- ACTIVER / DÉSACTIVER DES BONUS BO2                         -->
         <!-- ═══════════════════════════════════════════════════════════ -->
 
         <!-- Séparateur options -->
-        <Rectangle Grid.Row="2" Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" />
+        <Rectangle Grid.Row="17" Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" />
 
         <!-- Label toggle bonus -->
-        <TextBlock Grid.Row="3" Text="ACTIVER / DESACTIVER DES BONUS"
+        <TextBlock Grid.Row="18" Text="ACTIVER / DESACTIVER DES BONUS"
                    FontFamily="Consolas" FontSize="11" FontWeight="Bold"
                    Foreground="{StaticResource BrushTextMuted}"
                    Margin="0,0,0,10" />
 
         <!-- Boutons toggle bonus BO2 -->
-        <WrapPanel x:Name="Bo2ToggleButtonsPanel" Grid.Row="4"
+        <WrapPanel x:Name="Bo2ToggleButtonsPanel" Grid.Row="19"
                    Orientation="Horizontal" Margin="0,0,0,20" />
 
         <!-- ══ TRACKER BONUS BO2 ══ -->
-        <Rectangle x:Name="Bo2BonusSeparator" Grid.Row="5"
+        <Rectangle x:Name="Bo2BonusSeparator" Grid.Row="20"
                    Fill="{StaticResource BrushBorder}"
                    Margin="0,0,0,16" Visibility="Collapsed" />
 
-        <StackPanel x:Name="Bo2BonusLabelPanel" Grid.Row="6"
+        <StackPanel x:Name="Bo2BonusLabelPanel" Grid.Row="21"
                     Margin="0,0,0,12" Visibility="Collapsed">
             <DockPanel Margin="0,0,0,6">
                 <TextBlock x:Name="Bo2MapTitleText"
@@ -500,11 +968,11 @@
                        Margin="0" />
         </StackPanel>
 
-        <WrapPanel x:Name="Bo2DropsPanel" Grid.Row="7"
+        <WrapPanel x:Name="Bo2DropsPanel" Grid.Row="22"
                    Orientation="Horizontal"
                    Margin="0,0,0,16" Visibility="Collapsed" />
 
-        <StackPanel x:Name="Bo2ResetButtonsPanel" Grid.Row="8"
+        <StackPanel x:Name="Bo2ResetButtonsPanel" Grid.Row="23"
                     Orientation="Horizontal"
                     Margin="0,0,0,20" Visibility="Collapsed">
             <Button x:Name="Bo2ResetCycleButton"
@@ -519,7 +987,7 @@
         </StackPanel>
 
         <Border x:Name="Bo2HistoryBox"
-                Grid.Row="9"
+                Grid.Row="24"
                 Background="{StaticResource BrushBgHistory}"
                 BorderBrush="{StaticResource BrushBorder}"
                 BorderThickness="1" CornerRadius="10"
@@ -776,6 +1244,86 @@
                   FontFamily="Consolas" FontSize="12"
                   Checked="TwitchListenEnabledCheck_Changed"
                   Unchecked="TwitchListenEnabledCheck_Changed" />
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ══ CONTENU RESET TRACKER ══ -->
+    <ScrollViewer x:Name="ResetTrackerPanel" Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+      <StackPanel Margin="24,20,24,20" MaxWidth="640" HorizontalAlignment="Left">
+
+        <TextBlock Text="RESET TRACKER (BO1)"
+                   FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                   Foreground="{StaticResource BrushTextPrimary}"
+                   Margin="0,0,0,4" />
+        <TextBlock Text="Estime le temps restant avant un 'reset' de partie à très haute manche (débordement du compteur interne du jeu)."
+                   FontFamily="Consolas" FontSize="12"
+                   Foreground="{StaticResource BrushTextSecondary}"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,16" />
+
+        <Border Background="{StaticResource BrushBgCard}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="1" CornerRadius="8"
+                Padding="14,12" Margin="0,0,0,20">
+            <TextBlock TextWrapping="Wrap"
+                       FontFamily="Consolas" FontSize="11"
+                       Foreground="{StaticResource BrushTextSecondary}">
+                <Run Text="⚠ Ce tracker lit deux valeurs en mémoire de BlackOps.exe (jamais d'écriture, aucune modification du jeu). "/>
+                <Run Text="Il reste éteint par défaut : active-le uniquement quand tu en as besoin, et désactive-le après pour éviter toute interaction inutile avec le jeu."/>
+            </TextBlock>
+        </Border>
+
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+            <Button x:Name="ResetTrackerToggleButton"
+                    Content="ACTIVER LE TRACKER"
+                    Style="{StaticResource ResetButtonStyle}"
+                    Click="ResetTrackerToggleButton_Click" />
+        </StackPanel>
+
+        <Border x:Name="ResetTrackerStatsBox"
+                Background="{StaticResource BrushBgHistory}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="1" CornerRadius="10"
+                Padding="16,14"
+                Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock x:Name="ResetTrackerStatusText"
+                           Text="En attente de BlackOps.exe ou de Plutonium..."
+                           FontFamily="Consolas" FontSize="13" FontWeight="Bold"
+                           Foreground="{StaticResource BrushAccentLight}"
+                           Margin="0,0,0,12" />
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Level time (ticks) :" Foreground="{StaticResource BrushTextSecondary}" FontFamily="Consolas" FontSize="12" Margin="0,0,0,6"/>
+                    <TextBlock x:Name="ResetTrackerLevelTimeText" Grid.Row="0" Grid.Column="1" Text="—" Foreground="{StaticResource BrushTextPrimary}" FontFamily="Consolas" FontSize="12" FontWeight="Bold" Margin="0,0,0,6"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Entités sur la map :" Foreground="{StaticResource BrushTextSecondary}" FontFamily="Consolas" FontSize="12" Margin="0,0,0,6"/>
+                    <TextBlock x:Name="ResetTrackerEntityCountText" Grid.Row="1" Grid.Column="1" Text="—" Foreground="{StaticResource BrushTextPrimary}" FontFamily="Consolas" FontSize="12" FontWeight="Bold" Margin="0,0,0,6"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Snapshot (dernière minute) :" Foreground="{StaticResource BrushTextSecondary}" FontFamily="Consolas" FontSize="12" Margin="0,0,0,6"/>
+                    <TextBlock x:Name="ResetTrackerSnapshotText" Grid.Row="2" Grid.Column="1" Text="—" Foreground="{StaticResource BrushTextPrimary}" FontFamily="Consolas" FontSize="12" FontWeight="Bold" Margin="0,0,0,6"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Temps de session :" Foreground="{StaticResource BrushTextSecondary}" FontFamily="Consolas" FontSize="12" Margin="0,0,0,6"/>
+                    <TextBlock x:Name="ResetTrackerSessionTimeText" Grid.Row="3" Grid.Column="1" Text="—" Foreground="{StaticResource BrushTextPrimary}" FontFamily="Consolas" FontSize="12" FontWeight="Bold" Margin="0,0,0,6"/>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Temps avant reset (est.) :" Foreground="{StaticResource BrushTextSecondary}" FontFamily="Consolas" FontSize="12"/>
+                    <TextBlock x:Name="ResetTrackerEstimateText" Grid.Row="4" Grid.Column="1" Text="—" Foreground="{StaticResource BrushAccentLight}" FontFamily="Consolas" FontSize="13" FontWeight="Bold"/>
+                </Grid>
+            </StackPanel>
+        </Border>
 
       </StackPanel>
     </ScrollViewer>

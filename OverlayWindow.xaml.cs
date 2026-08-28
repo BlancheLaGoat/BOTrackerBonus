@@ -142,15 +142,20 @@ namespace BO1Tracker
         internal void RebuildCards()
         {
             CardsPanel.Children.Clear();
+            RoundSectionPanel.Children.Clear();
+            RoundSectionPanel.Visibility = Visibility.Collapsed;
+
             switch (Mode)
             {
                 case OverlayMode.Bo1Bonus:
                     if (_owner != null) BuildBonusCardsLive(_owner.CurrentDropsForOverlay, _owner.SelectedForOverlay, _owner.ClickOrderForOverlay, isBo2: false);
                     else                 BuildBonusCards(_bo1Clicks);
+                    BuildBo1RoundSection();
                     break;
                 case OverlayMode.Bo2Bonus:
                     if (_owner != null) BuildBonusCardsLive(_owner.CurrentBo2DropsForOverlay, _owner.Bo2SelectedForOverlay, _owner.Bo2ClickOrderForOverlay, isBo2: true);
                     else                 BuildBonusCards(_bo2Clicks);
+                    BuildBo2RoundSection();
                     break;
                 case OverlayMode.Box:
                     BuildBoxCards();
@@ -256,6 +261,103 @@ namespace BO1Tracker
 
             return card;
         }
+
+        /// <summary>Section "manche spéciale" pour l'onglet BO1 (toujours disponible, pas liée à une map précise).</summary>
+        private void BuildBo1RoundSection()
+        {
+            if (_owner == null) return;
+            BuildRoundSection(
+                title: "MANCHE SPÉCIALE",
+                current: _owner.CurrentDogRoundForOverlay,
+                steps: [4, 5],
+                formatRound: r => _owner.FormatRoundForOverlay(r),
+                onAdvance: step => _owner.AdvanceDogRoundFromOverlay(step));
+        }
+
+        /// <summary>Section "manche spéciale" pour l'onglet BO2 : Die Rise (+4/+5) ou Mob of the Dead (+3/+4/+5)
+        /// selon la map actuellement sélectionnée dans le tracker, sinon rien.</summary>
+        private void BuildBo2RoundSection()
+        {
+            if (_owner == null) return;
+
+            if (_owner.IsBo2DieRiseMapActive)
+            {
+                BuildRoundSection(
+                    title: "MANCHE SPÉCIALE (DIE RISE)",
+                    current: _owner.CurrentBo2DogRoundForOverlay,
+                    steps: [4, 5],
+                    formatRound: r => _owner.FormatRoundForOverlay(r),
+                    onAdvance: step => _owner.AdvanceBo2DogRoundFromOverlay(step));
+            }
+            else if (_owner.IsBo2MobMapActive)
+            {
+                BuildRoundSection(
+                    title: "MANCHE SPÉCIALE (MOB OF THE DEAD)",
+                    current: _owner.CurrentBo2MobRoundForOverlay,
+                    steps: [3, 4, 5],
+                    formatRound: r => $"{r}",
+                    onAdvance: step => _owner.AdvanceBo2MobRoundFromOverlay(step));
+            }
+        }
+
+        private void BuildRoundSection(string title, int? current, int[] steps, Func<int, string> formatRound, Action<int> onAdvance)
+        {
+            RoundSectionPanel.Visibility = Visibility.Visible;
+
+            var currentBlock = new StackPanel { Orientation = Orientation.Vertical, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
+            currentBlock.Children.Add(new TextBlock
+            {
+                Text = title, FontFamily = new FontFamily("Consolas"), FontSize = 10,
+                Foreground = new SolidColorBrush(ColTextSecond), Margin = new Thickness(0, 0, 0, 2),
+            });
+            currentBlock.Children.Add(new TextBlock
+            {
+                Text = current.HasValue ? formatRound(current.Value) : "—",
+                FontFamily = new FontFamily("Consolas"), FontSize = 22, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(ColAccentLight),
+            });
+            RoundSectionPanel.Children.Add(currentBlock);
+
+            if (current.HasValue)
+                foreach (int step in steps)
+                    RoundSectionPanel.Children.Add(MakeRoundStepBadge(step, formatRound(current.Value + step), onAdvance));
+        }
+
+        private Border MakeRoundStepBadge(int step, string nextRoundLabel, Action<int> onAdvance)
+        {
+            var stack = new StackPanel { Orientation = Orientation.Horizontal };
+            stack.Children.Add(new TextBlock
+            {
+                Text = $"+{step} → ", FontFamily = new FontFamily("Consolas"), FontSize = 13,
+                Foreground = new SolidColorBrush(ColTextSecond), VerticalAlignment = VerticalAlignment.Center,
+            });
+            stack.Children.Add(new TextBlock
+            {
+                Text = nextRoundLabel, FontFamily = new FontFamily("Consolas"), FontSize = 15, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(ColAccentLight), VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            var badge = new Border
+            {
+                Child           = stack,
+                Background      = new SolidColorBrush(ColAccentDark),
+                BorderBrush     = new SolidColorBrush(ColAccent),
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(6),
+                Padding         = new Thickness(12, 8, 12, 8),
+                Margin          = new Thickness(0, 0, 8, 0),
+                Cursor          = Cursors.Hand,
+            };
+
+            badge.MouseLeftButtonUp += (_, _) =>
+            {
+                onAdvance(step);
+                RebuildCards();
+            };
+
+            return badge;
+        }
+
 
         private void BuildBonusCards(List<(int Order, string Label, string ImagePath)> clicks)
         {
@@ -488,6 +590,38 @@ namespace BO1Tracker
         {
             Topmost = !Topmost;
             TopBtn.Content = Topmost ? "FOND" : "DEVANT";
+        }
+
+        private bool _opaqueBackground = false;
+        private static readonly Brush HeaderBarDragBrush     = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#01000000")); // quasi invisible mais cliquable
+        private static readonly Brush HeaderBarOpaqueBrush   = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#DD111111"));
+        private static readonly Brush ContentBarOpaqueBrush  = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#CC111111"));
+
+        /// <summary>Bascule entre fond TOTALEMENT transparent (par défaut, rien que les cartes flottent
+        /// à l'écran — idéal pour OBS) et fond plein (pratique pour utiliser la fenêtre normalement
+        /// sur le bureau, sans passer par OBS). La barre du haut garde toujours un fond quasi
+        /// invisible (alpha=1) même en mode transparent, sinon la fenêtre ne serait plus déplaçable.</summary>
+        private void OpaqueButton_Click(object sender, RoutedEventArgs e)
+        {
+            _opaqueBackground = !_opaqueBackground;
+
+            RootGrid.Background          = _opaqueBackground ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0D0D0D")) : Brushes.Transparent;
+            HeaderBarBorder.Background   = _opaqueBackground ? HeaderBarOpaqueBrush  : HeaderBarDragBrush;
+            ContentBarBorder.Background  = _opaqueBackground ? ContentBarOpaqueBrush : Brushes.Transparent;
+
+            OpaqueBtn.Content = _opaqueBackground ? "TRANSPARENT" : "OPAQUE";
+        }
+
+        private bool _headerCollapsed = false;
+
+        /// <summary>Réduit la barre du haut aux seuls boutons ▲/▼ + fermeture,
+        /// pour n'afficher que les bonus à l'écran (pratique une fois les réglages faits).</summary>
+        private void CollapseButton_Click(object sender, RoutedEventArgs e)
+        {
+            _headerCollapsed = !_headerCollapsed;
+            HeaderControlsPanel.Visibility      = _headerCollapsed ? Visibility.Collapsed : Visibility.Visible;
+            HeaderRightControlsPanel.Visibility = _headerCollapsed ? Visibility.Collapsed : Visibility.Visible;
+            CollapseBtn.Content = _headerCollapsed ? "▼" : "▲";
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();

@@ -61,34 +61,46 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid x:Name="RootGrid" Background="Transparent">
         <StackPanel>
 
-            <!-- Barre de contrôle (toujours visible, seule zone de déplacement de la fenêtre) -->
-            <Border Background="#DD111111" CornerRadius="8,8,0,0" Padding="10,6"
+            <!-- Barre de contrôle (toujours visible, seule zone de déplacement de la fenêtre).
+                 Fond quasi invisible (alpha=1) et non pas totalement Transparent : sous Windows,
+                 une fenêtre "AllowsTransparency" laisse passer les clics à travers un pixel
+                 d'alpha 0, donc un fond réellement transparent empêcherait tout déplacement. -->
+            <Border x:Name="HeaderBarBorder" Background="#01000000" CornerRadius="8,8,0,0" Padding="10,6"
                     MouseLeftButtonDown="DragHandle_MouseLeftButtonDown">
                 <DockPanel>
                     <!-- Sélecteur de mode -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="ModeBO1Btn" Content="BO1 BONUS" Style="{StaticResource ModeBtn}" Margin="0,0,4,0" Click="ModeBO1_Click"/>
-                        <Button x:Name="ModeBO2Btn" Content="BO2 BONUS" Style="{StaticResource ModeBtn}" Margin="0,0,4,0" Click="ModeBO2_Click"/>
+                    <StackPanel x:Name="HeaderControlsPanel" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="ModeBO1Btn" Content="BO1" Style="{StaticResource ModeBtn}" Margin="0,0,4,0" Click="ModeBO1_Click"/>
+                        <Button x:Name="ModeBO2Btn" Content="BO2" Style="{StaticResource ModeBtn}" Margin="0,0,4,0" Click="ModeBO2_Click"/>
                         <Button x:Name="ModeBoxBtn" Content="BOÎTE"     Style="{StaticResource ModeBtn}" Click="ModeBox_Click"/>
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <StackPanel x:Name="HeaderRightControlsPanel" DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="OpaqueBtn" Content="OPAQUE" Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="OpaqueButton_Click"
+                                ToolTip="Bascule entre fond totalement transparent (pour OBS Window Capture) et fond plein (pour utiliser la fenêtre normalement, sans OBS)"/>
                         <Button x:Name="TopBtn"  Content="FOND"   Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="TopButton_Click"/>
                         <Button x:Name="LockBtn" Content="LOCK"   Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="LockButton_Click"/>
-                        <Button                  Content="✕"      Style="{StaticResource CtrlBtn}" Foreground="#FF6B6B" Click="CloseButton_Click"/>
+                        <Button                  Content="✕"      Style="{StaticResource CtrlBtn}" Foreground="#FF6B6B" Margin="0,0,4,0" Click="CloseButton_Click"/>
                     </StackPanel>
+                    <Button x:Name="CollapseBtn" Content="▲" Style="{StaticResource CtrlBtn}"
+                            DockPanel.Dock="Right" HorizontalAlignment="Right"
+                            ToolTip="Réduire/afficher les boutons (ne garde que les bonus à l'écran)"
+                            Click="CollapseButton_Click"/>
                 </DockPanel>
             </Border>
 
             <!-- Contenu -->
-            <Border Background="#CC111111" CornerRadius="0,0,8,8" Padding="12,10">
+            <Border x:Name="ContentBarBorder" Background="Transparent" CornerRadius="0,0,8,8" Padding="12,10">
                 <StackPanel>
                     <WrapPanel x:Name="CardsPanel" Orientation="Horizontal"/>
                     <TextBlock x:Name="EmptyText"
                                FontFamily="Consolas" FontSize="11"
                                Foreground="#444444" Visibility="Collapsed"/>
+
+                    <!-- Manches spéciales de la map active (BO1 dog rounds, Die Rise, Mob) -->
+                    <StackPanel x:Name="RoundSectionPanel" Orientation="Horizontal" Margin="0,10,0,0" Visibility="Collapsed"/>
                 </StackPanel>
             </Border>
 

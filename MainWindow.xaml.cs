@@ -11,6 +11,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace BO1Tracker;
 
@@ -52,6 +53,16 @@ class AppState
     public int              CycleCount        { get; set; }
     public int?             CurrentDogRound   { get; set; }
     public List<int>        DogRoundHistory   { get; set; } = [];
+    public int?             CurrentBo2DogRound { get; set; }
+    public List<int>        Bo2DogRoundHistory { get; set; } = [];
+    public int?             CurrentBo2MobRound { get; set; }
+    public List<int>        Bo2MobRoundHistory { get; set; } = [];
+    public int?             CurrentBo2PanzerRound { get; set; }
+    public List<int>        Bo2PanzerRoundHistory { get; set; } = [];
+    public List<int>        Bo2Tank1Rounds { get; set; } = [];
+    public List<int>        Bo2Tank2Rounds { get; set; } = [];
+    public List<int>        Bo2Tank3Rounds { get; set; } = [];
+    public List<int>        Bo2GenRounds { get; set; } = [];
     // BO2
     public string?          CurrentBo2MapId   { get; set; }
     public List<string>     Bo2DisabledIds    { get; set; } = [];
@@ -206,6 +217,32 @@ public partial class MainWindow : Window
     private List<int>  _dogRoundHistory = [];
 
     // ----------------------------------------------------------------
+    //  ÉTAT — MANCHES SPÉCIALES (BO2, Die Rise uniquement)
+    // ----------------------------------------------------------------
+    private int?       _currentBo2DogRound = null;
+    private List<int>  _bo2DogRoundHistory = [];
+
+    // ----------------------------------------------------------------
+    //  ÉTAT — MANCHES SPÉCIALES (BO2, Mob of the Dead uniquement, +4/+5/+6)
+    // ----------------------------------------------------------------
+    private int?       _currentBo2MobRound = null;
+    private List<int>  _bo2MobRoundHistory = [];
+
+    // ----------------------------------------------------------------
+    //  ÉTAT — MANCHES SPÉCIALES (BO2, Origins uniquement, +4/+5, sans Twitch)
+    // ----------------------------------------------------------------
+    private int?       _currentBo2PanzerRound = null;
+    private List<int>  _bo2PanzerRoundHistory = [];
+
+    // ----------------------------------------------------------------
+    //  ÉTAT — BONUS DES TANKS (BO2, Origins uniquement, saisie 100% manuelle)
+    // ----------------------------------------------------------------
+    private List<int>        _bo2Tank1Rounds     = [];
+    private List<int>        _bo2Tank2Rounds     = [];
+    private List<int>        _bo2Tank3Rounds     = [];
+    private List<int>        _bo2GenRounds       = [];
+
+    // ----------------------------------------------------------------
     //  BRUSHES
     // ----------------------------------------------------------------
     private static SolidColorBrush Brush(string key) =>
@@ -262,8 +299,9 @@ public partial class MainWindow : Window
         catch { }
     }
 
-    /// <summary>Envoie la commande avec TOUT l'historique des manches spéciales dans le chat Twitch.</summary>
-    private void SendTwitchRoundCommand()
+    /// <summary>Envoie la commande avec TOUT l'historique de manches donné dans le chat Twitch
+    /// (réutilisé aussi bien pour les manches spéciales BO1 que pour Die Rise en BO2).</summary>
+    private void SendTwitchRoundCommand(List<int> history)
     {
         if (!_twitchConfig.TwitchAutoSend) return;
         if (string.IsNullOrWhiteSpace(_twitchConfig.TwitchUserId) || string.IsNullOrWhiteSpace(_twitchConfig.TwitchClientId))
@@ -271,10 +309,10 @@ public partial class MainWindow : Window
             SetTwitchStatus("Non connecté à Twitch.", isError: true);
             return;
         }
-        if (_dogRoundHistory.Count == 0) return;
+        if (history.Count == 0) return;
 
         // Liste triée du plus petit au plus grand, avec * sur les manches spéciales : "5, 10, 163*, 165*"
-        string roundsList = string.Join(", ", _dogRoundHistory.OrderBy(r => r).Select(FormatRound));
+        string roundsList = string.Join(", ", history.OrderBy(r => r).Select(FormatRound));
 
         string message;
         try { message = string.Format(_twitchConfig.TwitchCommandTemplate, roundsList); }
@@ -346,7 +384,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(trigger)) return;
 
         if (string.Equals(text.Trim(), trigger, StringComparison.OrdinalIgnoreCase))
-            SendTwitchRoundCommand();
+            SendTwitchRoundCommand(_dogRoundHistory);
     }
 
     private void TwitchConnectButton_Click(object sender, RoutedEventArgs e)
@@ -868,6 +906,16 @@ public partial class MainWindow : Window
         CycleCount       = _cycleCount,
         CurrentDogRound  = _currentDogRound,
         DogRoundHistory  = [.._dogRoundHistory],
+        CurrentBo2DogRound = _currentBo2DogRound,
+        Bo2DogRoundHistory = [.._bo2DogRoundHistory],
+        CurrentBo2MobRound = _currentBo2MobRound,
+        Bo2MobRoundHistory = [.._bo2MobRoundHistory],
+        CurrentBo2PanzerRound = _currentBo2PanzerRound,
+        Bo2PanzerRoundHistory = [.._bo2PanzerRoundHistory],
+        Bo2Tank1Rounds = [.._bo2Tank1Rounds],
+        Bo2Tank2Rounds = [.._bo2Tank2Rounds],
+        Bo2Tank3Rounds = [.._bo2Tank3Rounds],
+        Bo2GenRounds = [.._bo2GenRounds],
         // BO2
         CurrentBo2MapId  = _currentBo2Map?.Id,
         Bo2DisabledIds   = [.._bo2DisabledIds],
@@ -906,6 +954,32 @@ public partial class MainWindow : Window
             _dogRoundHistory  = state.DogRoundHistory;
             UpdateDogRoundDisplay();
             RenderDogHistory();
+
+            // --- dog rounds BO2 (Die Rise) ---
+            _currentBo2DogRound = state.CurrentBo2DogRound;
+            _bo2DogRoundHistory  = state.Bo2DogRoundHistory;
+            UpdateBo2DogRoundDisplay();
+            RenderBo2DogHistory();
+
+            // --- manches spéciales BO2 (Mob of the Dead) ---
+            _currentBo2MobRound = state.CurrentBo2MobRound;
+            _bo2MobRoundHistory  = state.Bo2MobRoundHistory;
+            UpdateBo2MobRoundDisplay();
+            RenderBo2MobHistory();
+
+            // --- manches spéciales BO2 (Origins, Panzers) ---
+            _currentBo2PanzerRound = state.CurrentBo2PanzerRound;
+            _bo2PanzerRoundHistory  = state.Bo2PanzerRoundHistory;
+            UpdateBo2PanzerRoundDisplay();
+            RenderBo2PanzerHistory();
+
+            // --- bonus des tanks BO2 (Origins) ---
+            _bo2Tank1Rounds = state.Bo2Tank1Rounds;
+            _bo2Tank2Rounds = state.Bo2Tank2Rounds;
+            _bo2Tank3Rounds = state.Bo2Tank3Rounds;
+            _bo2GenRounds = state.Bo2GenRounds;
+            RenderBo2TankHistory();
+            RenderBo2GenHistory();
 
             // --- map ---
             var map = state.CurrentMapId != null
@@ -979,6 +1053,10 @@ public partial class MainWindow : Window
                 Bo2DropsPanel.Visibility        = Visibility.Visible;
                 Bo2ResetButtonsPanel.Visibility = Visibility.Visible;
                 Bo2HistoryBox.Visibility        = Visibility.Visible;
+                ApplyBo2DogVisibility(bo2Map.Id == "die_rise");
+                ApplyBo2MobVisibility(bo2Map.Id == "mob");
+                ApplyBo2PanzerVisibility(bo2Map.Id == "origins");
+                ApplyBo2TankVisibility(bo2Map.Id == "origins");
             }
 
             if (_currentBo2Map != null)
@@ -1258,6 +1336,28 @@ public partial class MainWindow : Window
             UpdateDogRoundDisplay();
             RenderDogHistory();
 
+            _currentBo2DogRound = state.CurrentBo2DogRound;
+            _bo2DogRoundHistory  = state.Bo2DogRoundHistory;
+            UpdateBo2DogRoundDisplay();
+            RenderBo2DogHistory();
+
+            _currentBo2MobRound = state.CurrentBo2MobRound;
+            _bo2MobRoundHistory  = state.Bo2MobRoundHistory;
+            UpdateBo2MobRoundDisplay();
+            RenderBo2MobHistory();
+
+            _currentBo2PanzerRound = state.CurrentBo2PanzerRound;
+            _bo2PanzerRoundHistory  = state.Bo2PanzerRoundHistory;
+            UpdateBo2PanzerRoundDisplay();
+            RenderBo2PanzerHistory();
+
+            _bo2Tank1Rounds = state.Bo2Tank1Rounds;
+            _bo2Tank2Rounds = state.Bo2Tank2Rounds;
+            _bo2Tank3Rounds = state.Bo2Tank3Rounds;
+            _bo2GenRounds = state.Bo2GenRounds;
+            RenderBo2TankHistory();
+            RenderBo2GenHistory();
+
             if (state.CurrentMapId != null)
             {
                 var map = Maps.FirstOrDefault(m => m.Id == state.CurrentMapId);
@@ -1328,6 +1428,10 @@ public partial class MainWindow : Window
                     Bo2DropsPanel.Visibility        = Visibility.Visible;
                     Bo2ResetButtonsPanel.Visibility = Visibility.Visible;
                     Bo2HistoryBox.Visibility        = Visibility.Visible;
+                    ApplyBo2DogVisibility(map.Id == "die_rise");
+                    ApplyBo2MobVisibility(map.Id == "mob");
+                    ApplyBo2PanzerVisibility(map.Id == "origins");
+                    ApplyBo2TankVisibility(map.Id == "origins");
 
                     RenderBo2Drops();
                     RenderBo2History();
@@ -1339,8 +1443,83 @@ public partial class MainWindow : Window
 
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
+        StopResetTracker();
         Disconnect();
         SaveState();
+    }
+
+    // ================================================================
+    //  RESET TRACKER (BO1) — désactivé par défaut, lecture mémoire seule
+    // ================================================================
+    private ResetTrackerService? _resetTrackerService;
+    private DispatcherTimer?     _resetTrackerTimer;
+    private bool                 _resetTrackerActive = false;
+
+    private void ResetTrackerToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_resetTrackerActive) StopResetTracker();
+        else                     StartResetTracker();
+    }
+
+    private void StartResetTracker()
+    {
+        _resetTrackerActive = true;
+        _resetTrackerService = new ResetTrackerService();
+
+        _resetTrackerTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _resetTrackerTimer.Tick += (_, _) => UpdateResetTrackerDisplay();
+        _resetTrackerTimer.Start();
+
+        ResetTrackerToggleButton.Content = "DÉSACTIVER LE TRACKER";
+        ResetTrackerStatsBox.Visibility  = Visibility.Visible;
+        ResetTrackerStatusText.Text      = "En attente de BlackOps.exe ou de Plutonium...";
+    }
+
+    private void StopResetTracker()
+    {
+        _resetTrackerActive = false;
+        _resetTrackerTimer?.Stop();
+        _resetTrackerTimer = null;
+        _resetTrackerService?.Dispose();
+        _resetTrackerService = null;
+
+        ResetTrackerToggleButton.Content = "ACTIVER LE TRACKER";
+        ResetTrackerStatsBox.Visibility  = Visibility.Collapsed;
+    }
+
+    private void UpdateResetTrackerDisplay()
+    {
+        if (_resetTrackerService == null) return;
+        var snap = _resetTrackerService.Poll();
+
+        if (!snap.ProcessFound)
+        {
+            ResetTrackerStatusText.Text = "En attente de BlackOps.exe ou de Plutonium... (lance Black Ops 1)";
+            ResetTrackerLevelTimeText.Text    = "—";
+            ResetTrackerEntityCountText.Text  = "—";
+            ResetTrackerSnapshotText.Text     = "—";
+            ResetTrackerSessionTimeText.Text  = "—";
+            ResetTrackerEstimateText.Text     = "—";
+            return;
+        }
+
+        ResetTrackerStatusText.Text = $"Connecté à {snap.ProcessName}.exe (PID {snap.Pid})";
+        ResetTrackerLevelTimeText.Text   = $"{snap.LevelTime:N0} / 2 147 483 647";
+        ResetTrackerEntityCountText.Text = $"{snap.EntityCount}";
+        ResetTrackerSnapshotText.Text    = $"{snap.LastSnapshotTicks:N0}";
+        ResetTrackerSessionTimeText.Text = FormatTimeSpan(snap.SessionElapsed);
+        ResetTrackerEstimateText.Text    = snap.EstimatedTimeToReset.HasValue
+            ? FormatTimeSpan(snap.EstimatedTimeToReset.Value)
+            : "N/A";
+    }
+
+    private static string FormatTimeSpan(TimeSpan ts)
+    {
+        long totalSec = (long)ts.TotalSeconds;
+        long h = totalSec / 3600;
+        long m = (totalSec % 3600) / 60;
+        long s = totalSec % 60;
+        return h > 0 ? $"{h}h {m:D2}:{s:D2}" : $"{m:D2}:{s:D2}";
     }
 
     // ----------------------------------------------------------------
@@ -1408,7 +1587,8 @@ public partial class MainWindow : Window
             (Bo1TabButton,   "bo1"),
             (Bo2TabButton,   "bo2"),
             (MultiTabButton, "multi"),
-            (TwitchTabButton,"twitch") })
+            (TwitchTabButton,"twitch"),
+            (ResetTrackerTabButton,"resettracker") })
         {
             bool active = name == tab;
             btn.IsChecked  = active;
@@ -1421,12 +1601,14 @@ public partial class MainWindow : Window
         Bo2Panel.Visibility    = tab == "bo2"    ? Visibility.Visible : Visibility.Collapsed;
         MultiPanel.Visibility  = tab == "multi"  ? Visibility.Visible : Visibility.Collapsed;
         TwitchPanel.Visibility = tab == "twitch" ? Visibility.Visible : Visibility.Collapsed;
+        ResetTrackerPanel.Visibility = tab == "resettracker" ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void Bo1TabButton_Click(object sender, RoutedEventArgs e)    => SetActiveTab("bo1");
     private void Bo2TabButton_Click(object sender, RoutedEventArgs e)    => SetActiveTab("bo2");
     private void MultiTabButton_Click(object sender, RoutedEventArgs e)  => SetActiveTab("multi");
     private void TwitchTabButton_Click(object sender, RoutedEventArgs e) => SetActiveTab("twitch");
+    private void ResetTrackerTabButton_Click(object sender, RoutedEventArgs e) => SetActiveTab("resettracker");
 
     // ================================================================
     //  BOUTONS DE MAPS
@@ -1570,7 +1752,8 @@ public partial class MainWindow : Window
         UpdateDogRoundDisplay();
         RenderDogHistory();
         SaveState();
-        SendTwitchRoundCommand();
+        SendTwitchRoundCommand(_dogRoundHistory);
+        RefreshOverlayIfOpen();
     }
 
     private void ResetDogRoundsButton_Click(object sender, RoutedEventArgs e)
@@ -1581,33 +1764,24 @@ public partial class MainWindow : Window
         UpdateDogRoundDisplay();
         RenderDogHistory();
         SaveState();
+        RefreshOverlayIfOpen();
     }
 
-    private void DogNext4Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void DogNext4Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => AdvanceDogRound(4);
+    private void DogNext5Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => AdvanceDogRound(5);
+
+    private void AdvanceDogRound(int step)
     {
         if (_currentDogRound is int current)
         {
-            int next = current + 4;
+            int next = current + step;
             _currentDogRound = next;
             if (!_dogRoundHistory.Contains(next)) _dogRoundHistory.Insert(0, next);
             UpdateDogRoundDisplay();
             RenderDogHistory();
             SaveState();
-            SendTwitchRoundCommand();
-        }
-    }
-
-    private void DogNext5Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        if (_currentDogRound is int current)
-        {
-            int next = current + 5;
-            _currentDogRound = next;
-            if (!_dogRoundHistory.Contains(next)) _dogRoundHistory.Insert(0, next);
-            UpdateDogRoundDisplay();
-            RenderDogHistory();
-            SaveState();
-            SendTwitchRoundCommand();
+            SendTwitchRoundCommand(_dogRoundHistory);
+            RefreshOverlayIfOpen();
         }
     }
 
@@ -1665,6 +1839,469 @@ public partial class MainWindow : Window
             badge.Child = stack;
             badge.MouseLeftButtonUp += (_, _) => { _currentDogRound = round; UpdateDogRoundDisplay(); RenderDogHistory(); SaveState(); };
             DogHistoryPanel.Children.Add(badge);
+        }
+    }
+
+    // ================================================================
+    //  MANCHES SPÉCIALES — BO2 (DIE RISE UNIQUEMENT)
+    // ================================================================
+    private void ApplyBo2DogVisibility(bool isDieRise)
+    {
+        Bo2DogSeparator.Visibility     = isDieRise ? Visibility.Visible : Visibility.Collapsed;
+        Bo2DogLabel.Visibility         = isDieRise ? Visibility.Visible : Visibility.Collapsed;
+        Bo2DogControlsPanel.Visibility = isDieRise ? Visibility.Visible : Visibility.Collapsed;
+        Bo2DogHistoryBox.Visibility    = (isDieRise && _bo2DogRoundHistory.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void Bo2DogRoundInput_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        => e.Handled = !e.Text.All(char.IsDigit);
+
+    private void SetBo2DogRoundButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(Bo2DogRoundInput.Text, out int round) || round <= 0)
+        {
+            MessageBox.Show("Veuillez entrer un numéro de manche valide (nombre entier positif).",
+                            "Manche invalide", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        _currentBo2DogRound = round;
+        if (!_bo2DogRoundHistory.Contains(round)) _bo2DogRoundHistory.Insert(0, round);
+        Bo2DogRoundInput.Clear();
+        UpdateBo2DogRoundDisplay();
+        RenderBo2DogHistory();
+        SaveState();
+        SendTwitchRoundCommand(_bo2DogRoundHistory);
+        RefreshOverlayIfOpen();
+    }
+
+    private void ResetBo2DogRoundsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _currentBo2DogRound = null;
+        _bo2DogRoundHistory  = [];
+        Bo2DogRoundInput.Clear();
+        UpdateBo2DogRoundDisplay();
+        RenderBo2DogHistory();
+        SaveState();
+        RefreshOverlayIfOpen();
+    }
+
+    private void Bo2DogNext4Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => AdvanceBo2DogRound(4);
+    private void Bo2DogNext5Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => AdvanceBo2DogRound(5);
+
+    private void AdvanceBo2DogRound(int step)
+    {
+        if (_currentBo2DogRound is int current)
+        {
+            int next = current + step;
+            _currentBo2DogRound = next;
+            if (!_bo2DogRoundHistory.Contains(next)) _bo2DogRoundHistory.Insert(0, next);
+            UpdateBo2DogRoundDisplay();
+            RenderBo2DogHistory();
+            SaveState();
+            SendTwitchRoundCommand(_bo2DogRoundHistory);
+            RefreshOverlayIfOpen();
+        }
+    }
+
+    private void UpdateBo2DogRoundDisplay()
+    {
+        if (_currentBo2DogRound is int current)
+        {
+            Bo2DogNextRoundPanel.Visibility = Visibility.Visible;
+            Bo2DogNext4Text.Text = FormatRound(current + 4);
+            Bo2DogNext5Text.Text = FormatRound(current + 5);
+        }
+        else
+        {
+            Bo2DogNextRoundPanel.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void RenderBo2DogHistory()
+    {
+        Bo2DogHistoryPanel.Children.Clear();
+        bool isDieRise = _currentBo2Map?.Id == "die_rise";
+        if (_bo2DogRoundHistory.Count == 0) { Bo2DogHistoryBox.Visibility = Visibility.Collapsed; return; }
+        Bo2DogHistoryBox.Visibility = isDieRise ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (int round in _bo2DogRoundHistory)
+        {
+            bool isCurrent = (_currentBo2DogRound == round);
+            var badge = new Border
+            {
+                Background      = isCurrent ? Brush("BrushAccentDark") : Brush("BrushBgCard"),
+                BorderBrush     = isCurrent ? Brush("BrushAccent")     : Brush("BrushBorder"),
+                BorderThickness = new Thickness(isCurrent ? 2 : 1),
+                CornerRadius    = new CornerRadius(6),
+                Padding         = new Thickness(14, 6, 14, 6),
+                Margin          = new Thickness(0, 0, 8, 8),
+                Cursor          = System.Windows.Input.Cursors.Hand,
+            };
+            var stack = new StackPanel { Orientation = Orientation.Horizontal };
+            if (isCurrent)
+                stack.Children.Add(new TextBlock { Text = "● ", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushAccent"), VerticalAlignment = VerticalAlignment.Center });
+            stack.Children.Add(new TextBlock { Text = FormatRound(round), FontFamily = new FontFamily("Consolas"), FontSize = 13, FontWeight = isCurrent ? FontWeights.Bold : FontWeights.Normal, Foreground = isCurrent ? Brush("BrushAccentLight") : Brush("BrushTextSecondary"), VerticalAlignment = VerticalAlignment.Center });
+            badge.Child = stack;
+            badge.MouseLeftButtonUp += (_, _) => { _currentBo2DogRound = round; UpdateBo2DogRoundDisplay(); RenderBo2DogHistory(); SaveState(); };
+            Bo2DogHistoryPanel.Children.Add(badge);
+        }
+    }
+
+    // ================================================================
+    //  MANCHES SPÉCIALES — BO2 (MOB OF THE DEAD UNIQUEMENT, +4/+5/+6)
+    //  Pas d'intégration Twitch/Nightbot pour celle-ci.
+    // ================================================================
+    private void ApplyBo2MobVisibility(bool isMob)
+    {
+        Bo2MobSeparator.Visibility     = isMob ? Visibility.Visible : Visibility.Collapsed;
+        Bo2MobLabel.Visibility         = isMob ? Visibility.Visible : Visibility.Collapsed;
+        Bo2MobControlsPanel.Visibility = isMob ? Visibility.Visible : Visibility.Collapsed;
+        Bo2MobHistoryBox.Visibility    = (isMob && _bo2MobRoundHistory.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void Bo2MobRoundInput_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        => e.Handled = !e.Text.All(char.IsDigit);
+
+    private void SetBo2MobRoundButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(Bo2MobRoundInput.Text, out int round) || round <= 0)
+        {
+            MessageBox.Show("Veuillez entrer un numéro de manche valide (nombre entier positif).",
+                            "Manche invalide", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        _currentBo2MobRound = round;
+        if (!_bo2MobRoundHistory.Contains(round)) _bo2MobRoundHistory.Insert(0, round);
+        Bo2MobRoundInput.Clear();
+        UpdateBo2MobRoundDisplay();
+        RenderBo2MobHistory();
+        SaveState();
+        RefreshOverlayIfOpen();
+    }
+
+    private void ResetBo2MobRoundsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _currentBo2MobRound = null;
+        _bo2MobRoundHistory  = [];
+        Bo2MobRoundInput.Clear();
+        UpdateBo2MobRoundDisplay();
+        RenderBo2MobHistory();
+        SaveState();
+        RefreshOverlayIfOpen();
+    }
+
+    private void Bo2MobNext4Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => AdvanceBo2MobRound(4);
+    private void Bo2MobNext5Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => AdvanceBo2MobRound(5);
+    private void Bo2MobNext6Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => AdvanceBo2MobRound(6);
+
+    private void AdvanceBo2MobRound(int step)
+    {
+        if (_currentBo2MobRound is int current)
+        {
+            int next = current + step;
+            _currentBo2MobRound = next;
+            if (!_bo2MobRoundHistory.Contains(next)) _bo2MobRoundHistory.Insert(0, next);
+            UpdateBo2MobRoundDisplay();
+            RenderBo2MobHistory();
+            SaveState();
+            RefreshOverlayIfOpen();
+        }
+    }
+
+    private void UpdateBo2MobRoundDisplay()
+    {
+        if (_currentBo2MobRound is int current)
+        {
+            Bo2MobNextRoundPanel.Visibility = Visibility.Visible;
+            Bo2MobNext4Text.Text = $"{current + 4}";
+            Bo2MobNext5Text.Text = $"{current + 5}";
+            Bo2MobNext6Text.Text = $"{current + 6}";
+        }
+        else
+        {
+            Bo2MobNextRoundPanel.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void RenderBo2MobHistory()
+    {
+        Bo2MobHistoryPanel.Children.Clear();
+        bool isMob = _currentBo2Map?.Id == "mob";
+        if (_bo2MobRoundHistory.Count == 0) { Bo2MobHistoryBox.Visibility = Visibility.Collapsed; return; }
+        Bo2MobHistoryBox.Visibility = isMob ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (int round in _bo2MobRoundHistory)
+        {
+            bool isCurrent = (_currentBo2MobRound == round);
+            var badge = new Border
+            {
+                Background      = isCurrent ? Brush("BrushAccentDark") : Brush("BrushBgCard"),
+                BorderBrush     = isCurrent ? Brush("BrushAccent")     : Brush("BrushBorder"),
+                BorderThickness = new Thickness(isCurrent ? 2 : 1),
+                CornerRadius    = new CornerRadius(6),
+                Padding         = new Thickness(14, 6, 14, 6),
+                Margin          = new Thickness(0, 0, 8, 8),
+                Cursor          = System.Windows.Input.Cursors.Hand,
+            };
+            var stack = new StackPanel { Orientation = Orientation.Horizontal };
+            if (isCurrent)
+                stack.Children.Add(new TextBlock { Text = "● ", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushAccent"), VerticalAlignment = VerticalAlignment.Center });
+            stack.Children.Add(new TextBlock { Text = $"{round}", FontFamily = new FontFamily("Consolas"), FontSize = 13, FontWeight = isCurrent ? FontWeights.Bold : FontWeights.Normal, Foreground = isCurrent ? Brush("BrushAccentLight") : Brush("BrushTextSecondary"), VerticalAlignment = VerticalAlignment.Center });
+            badge.Child = stack;
+            badge.MouseLeftButtonUp += (_, _) => { _currentBo2MobRound = round; UpdateBo2MobRoundDisplay(); RenderBo2MobHistory(); SaveState(); };
+            Bo2MobHistoryPanel.Children.Add(badge);
+        }
+    }
+
+    // ================================================================
+    //  MANCHES SPÉCIALES — BO2 (ORIGINS UNIQUEMENT, PANZERS, +4/+5)
+    //  Pas d'intégration Twitch/Nightbot pour celle-ci.
+    // ================================================================
+    private void ApplyBo2PanzerVisibility(bool isOrigins)
+    {
+        Bo2PanzerSeparator.Visibility     = isOrigins ? Visibility.Visible : Visibility.Collapsed;
+        Bo2PanzerLabel.Visibility         = isOrigins ? Visibility.Visible : Visibility.Collapsed;
+        Bo2PanzerControlsPanel.Visibility = isOrigins ? Visibility.Visible : Visibility.Collapsed;
+        Bo2PanzerHistoryBox.Visibility    = (isOrigins && _bo2PanzerRoundHistory.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void Bo2PanzerRoundInput_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        => e.Handled = !e.Text.All(char.IsDigit);
+
+    private void SetBo2PanzerRoundButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(Bo2PanzerRoundInput.Text, out int round) || round <= 0)
+        {
+            MessageBox.Show("Veuillez entrer un numéro de manche valide (nombre entier positif).",
+                            "Manche invalide", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        _currentBo2PanzerRound = round;
+        if (!_bo2PanzerRoundHistory.Contains(round)) _bo2PanzerRoundHistory.Insert(0, round);
+        Bo2PanzerRoundInput.Clear();
+        UpdateBo2PanzerRoundDisplay();
+        RenderBo2PanzerHistory();
+        SaveState();
+    }
+
+    private void ResetBo2PanzerRoundsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _currentBo2PanzerRound = null;
+        _bo2PanzerRoundHistory  = [];
+        Bo2PanzerRoundInput.Clear();
+        UpdateBo2PanzerRoundDisplay();
+        RenderBo2PanzerHistory();
+        SaveState();
+    }
+
+    private void Bo2PanzerNext4Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => AdvanceBo2PanzerRound(4);
+    private void Bo2PanzerNext5Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => AdvanceBo2PanzerRound(5);
+
+    private void AdvanceBo2PanzerRound(int step)
+    {
+        if (_currentBo2PanzerRound is int current)
+        {
+            int next = current + step;
+            _currentBo2PanzerRound = next;
+            if (!_bo2PanzerRoundHistory.Contains(next)) _bo2PanzerRoundHistory.Insert(0, next);
+            UpdateBo2PanzerRoundDisplay();
+            RenderBo2PanzerHistory();
+            SaveState();
+        }
+    }
+
+    private void UpdateBo2PanzerRoundDisplay()
+    {
+        if (_currentBo2PanzerRound is int current)
+        {
+            Bo2PanzerNextRoundPanel.Visibility = Visibility.Visible;
+            Bo2PanzerNext4Text.Text = $"{current + 4}";
+            Bo2PanzerNext5Text.Text = $"{current + 5}";
+        }
+        else
+        {
+            Bo2PanzerNextRoundPanel.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void RenderBo2PanzerHistory()
+    {
+        Bo2PanzerHistoryPanel.Children.Clear();
+        bool isOrigins = _currentBo2Map?.Id == "origins";
+        if (_bo2PanzerRoundHistory.Count == 0) { Bo2PanzerHistoryBox.Visibility = Visibility.Collapsed; return; }
+        Bo2PanzerHistoryBox.Visibility = isOrigins ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (int round in _bo2PanzerRoundHistory)
+        {
+            bool isCurrent = (_currentBo2PanzerRound == round);
+            var badge = new Border
+            {
+                Background      = isCurrent ? Brush("BrushAccentDark") : Brush("BrushBgCard"),
+                BorderBrush     = isCurrent ? Brush("BrushAccent")     : Brush("BrushBorder"),
+                BorderThickness = new Thickness(isCurrent ? 2 : 1),
+                CornerRadius    = new CornerRadius(6),
+                Padding         = new Thickness(14, 6, 14, 6),
+                Margin          = new Thickness(0, 0, 8, 8),
+                Cursor          = System.Windows.Input.Cursors.Hand,
+            };
+            var stack = new StackPanel { Orientation = Orientation.Horizontal };
+            if (isCurrent)
+                stack.Children.Add(new TextBlock { Text = "● ", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushAccent"), VerticalAlignment = VerticalAlignment.Center });
+            stack.Children.Add(new TextBlock { Text = $"{round}", FontFamily = new FontFamily("Consolas"), FontSize = 13, FontWeight = isCurrent ? FontWeights.Bold : FontWeights.Normal, Foreground = isCurrent ? Brush("BrushAccentLight") : Brush("BrushTextSecondary"), VerticalAlignment = VerticalAlignment.Center });
+            badge.Child = stack;
+            badge.MouseLeftButtonUp += (_, _) => { _currentBo2PanzerRound = round; UpdateBo2PanzerRoundDisplay(); RenderBo2PanzerHistory(); SaveState(); };
+            Bo2PanzerHistoryPanel.Children.Add(badge);
+        }
+    }
+
+    // ================================================================
+    //  BONUS DES TANKS — BO2 (ORIGINS UNIQUEMENT, 3 COLONNES, SAISIE MANUELLE)
+    // ================================================================
+    private void ApplyBo2TankVisibility(bool isOrigins)
+    {
+        Bo2TankSeparator.Visibility   = isOrigins ? Visibility.Visible : Visibility.Collapsed;
+        Bo2TankLabelPanel.Visibility  = isOrigins ? Visibility.Visible : Visibility.Collapsed;
+        Bo2TankContentPanel.Visibility = isOrigins ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private List<int> GetBo2TankRounds(int tank) => tank switch
+    {
+        2 => _bo2Tank2Rounds,
+        3 => _bo2Tank3Rounds,
+        _ => _bo2Tank1Rounds,
+    };
+
+    private void SetBo2TankRounds(int tank, List<int> rounds)
+    {
+        switch (tank)
+        {
+            case 2: _bo2Tank2Rounds = rounds; break;
+            case 3: _bo2Tank3Rounds = rounds; break;
+            default: _bo2Tank1Rounds = rounds; break;
+        }
+    }
+
+    private TextBox GetBo2TankInput(int tank) => tank switch
+    {
+        2 => Bo2Tank2RoundInput,
+        3 => Bo2Tank3RoundInput,
+        _ => Bo2Tank1RoundInput,
+    };
+
+    private Panel GetBo2TankHistoryPanel(int tank) => tank switch
+    {
+        2 => Bo2Tank2HistoryPanel,
+        3 => Bo2Tank3HistoryPanel,
+        _ => Bo2Tank1HistoryPanel,
+    };
+
+    private void Bo2TankRoundInput_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        => e.Handled = !e.Text.All(char.IsDigit);
+
+    private void AddBo2TankRoundButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement el || el.Tag is not string tagStr || !int.TryParse(tagStr, out int tank)) return;
+
+        var input = GetBo2TankInput(tank);
+        if (!int.TryParse(input.Text, out int round) || round <= 0)
+        {
+            MessageBox.Show("Veuillez entrer un numéro de manche valide (nombre entier positif).",
+                            "Manche invalide", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var rounds = GetBo2TankRounds(tank);
+        if (!rounds.Contains(round)) rounds.Insert(0, round);
+        input.Clear();
+        RenderBo2TankColumn(tank);
+        SaveState();
+    }
+
+    private void ResetBo2TankRoundsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement el || el.Tag is not string tagStr || !int.TryParse(tagStr, out int tank)) return;
+
+        SetBo2TankRounds(tank, []);
+        GetBo2TankInput(tank).Clear();
+        RenderBo2TankColumn(tank);
+        SaveState();
+    }
+
+    private void RenderBo2TankHistory()
+    {
+        RenderBo2TankColumn(1);
+        RenderBo2TankColumn(2);
+        RenderBo2TankColumn(3);
+    }
+
+    private void RenderBo2TankColumn(int tank)
+    {
+        var panel = GetBo2TankHistoryPanel(tank);
+        panel.Children.Clear();
+
+        foreach (int round in GetBo2TankRounds(tank).OrderBy(r => r))
+        {
+            var badge = new Border
+            {
+                Background      = Brush("BrushBgCard"),
+                BorderBrush     = Brush("BrushBorder"),
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(6),
+                Padding         = new Thickness(10, 5, 10, 5),
+                Margin          = new Thickness(0, 0, 6, 6),
+                Cursor          = System.Windows.Input.Cursors.Hand,
+            };
+            var tb = new TextBlock { Text = $"{round}", FontFamily = new FontFamily("Consolas"), FontSize = 13, Foreground = Brush("BrushTextSecondary"), VerticalAlignment = VerticalAlignment.Center };
+            badge.Child = tb;
+            badge.ToolTip = "Cliquer pour retirer";
+            badge.MouseLeftButtonUp += (_, _) => { GetBo2TankRounds(tank).Remove(round); RenderBo2TankColumn(tank); SaveState(); };
+            panel.Children.Add(badge);
+        }
+    }
+
+    // ── Bonus des générateurs (BO2, Origins uniquement, saisie manuelle) ──
+    private void AddBo2GenRoundButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(Bo2GenRoundInput.Text, out int round) || round <= 0)
+        {
+            MessageBox.Show("Veuillez entrer un numéro de manche valide (nombre entier positif).",
+                            "Manche invalide", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (!_bo2GenRounds.Contains(round)) _bo2GenRounds.Insert(0, round);
+        Bo2GenRoundInput.Clear();
+        RenderBo2GenHistory();
+        SaveState();
+    }
+
+    private void ResetBo2GenRoundsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _bo2GenRounds = [];
+        Bo2GenRoundInput.Clear();
+        RenderBo2GenHistory();
+        SaveState();
+    }
+
+    private void RenderBo2GenHistory()
+    {
+        Bo2GenHistoryPanel.Children.Clear();
+
+        foreach (int round in _bo2GenRounds.OrderBy(r => r))
+        {
+            var badge = new Border
+            {
+                Background      = Brush("BrushBgCard"),
+                BorderBrush     = Brush("BrushBorder"),
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(6),
+                Padding         = new Thickness(10, 5, 10, 5),
+                Margin          = new Thickness(0, 0, 6, 6),
+                Cursor          = System.Windows.Input.Cursors.Hand,
+            };
+            var tb = new TextBlock { Text = $"{round}", FontFamily = new FontFamily("Consolas"), FontSize = 13, Foreground = Brush("BrushTextSecondary"), VerticalAlignment = VerticalAlignment.Center };
+            badge.Child = tb;
+            badge.ToolTip = "Cliquer pour retirer";
+            badge.MouseLeftButtonUp += (_, _) => { _bo2GenRounds.Remove(round); RenderBo2GenHistory(); SaveState(); };
+            Bo2GenHistoryPanel.Children.Add(badge);
         }
     }
 
@@ -1935,6 +2572,24 @@ public partial class MainWindow : Window
     internal HashSet<string> Bo2SelectedForOverlay     => _bo2Selected;
     internal List<ClickedDrop> Bo2ClickOrderForOverlay => _bo2ClickOrder;
 
+    // ── Manches spéciales BO1, pour l'overlay ──
+    internal int?      CurrentDogRoundForOverlay => _currentDogRound;
+    internal List<int> DogRoundHistoryForOverlay => _dogRoundHistory;
+    internal void      AdvanceDogRoundFromOverlay(int step) => AdvanceDogRound(step);
+    internal string    FormatRoundForOverlay(int round) => FormatRound(round);
+
+    // ── Manches spéciales Die Rise (BO2), pour l'overlay ──
+    internal bool      IsBo2DieRiseMapActive          => _currentBo2Map?.Id == "die_rise";
+    internal int?      CurrentBo2DogRoundForOverlay    => _currentBo2DogRound;
+    internal List<int> Bo2DogRoundHistoryForOverlay    => _bo2DogRoundHistory;
+    internal void      AdvanceBo2DogRoundFromOverlay(int step) => AdvanceBo2DogRound(step);
+
+    // ── Manches spéciales Mob of the Dead, pour l'overlay ──
+    internal bool      IsBo2MobMapActive          => _currentBo2Map?.Id == "mob";
+    internal int?      CurrentBo2MobRoundForOverlay => _currentBo2MobRound;
+    internal List<int> Bo2MobRoundHistoryForOverlay => _bo2MobRoundHistory;
+    internal void      AdvanceBo2MobRoundFromOverlay(int step) => AdvanceBo2MobRound(step);
+
     /// <summary>Appelé par l'overlay quand on clique un bonus dedans : réutilise exactement la même logique que le tracker principal.</summary>
     internal void ToggleDropFromOverlay(string id)    => ToggleDrop(id);
     internal void ToggleBo2DropFromOverlay(string id) => ToggleBo2Drop(id);
@@ -1983,6 +2638,23 @@ public partial class MainWindow : Window
         _bo2Selected = []; _bo2ClickOrder = []; _bo2CycleHistory = []; _bo2CycleCount = 0;
         if (_currentBo2Map != null) { _currentBo2Drops = _currentBo2Map.Drops.Where(d => !_bo2DisabledIds.Contains(d.Id)).ToList(); RenderBo2Drops(); RenderBo2History(); }
 
+        _currentBo2DogRound = null; _bo2DogRoundHistory = [];
+        Bo2DogRoundInput.Clear(); UpdateBo2DogRoundDisplay(); RenderBo2DogHistory();
+
+        _currentBo2MobRound = null; _bo2MobRoundHistory = [];
+        Bo2MobRoundInput.Clear(); UpdateBo2MobRoundDisplay(); RenderBo2MobHistory();
+
+        _currentBo2PanzerRound = null; _bo2PanzerRoundHistory = [];
+        Bo2PanzerRoundInput.Clear(); UpdateBo2PanzerRoundDisplay(); RenderBo2PanzerHistory();
+
+        _bo2Tank1Rounds = []; _bo2Tank2Rounds = []; _bo2Tank3Rounds = [];
+        Bo2Tank1RoundInput.Clear(); Bo2Tank2RoundInput.Clear(); Bo2Tank3RoundInput.Clear();
+        RenderBo2TankHistory();
+
+        _bo2GenRounds = [];
+        Bo2GenRoundInput.Clear();
+        RenderBo2GenHistory();
+
         SaveState();
     }
 
@@ -2013,6 +2685,48 @@ public partial class MainWindow : Window
             else foreach (var cycle in _bo2CycleHistory) { sb.AppendLine($"  Cycle #{cycle.Num} :"); foreach (var click in cycle.Clicks.OrderBy(c => c.Order)) sb.AppendLine($"    {click.Order}. {click.Drop.Label}"); }
             if (_bo2ClickOrder.Count > 0) { sb.AppendLine("  Cycle en cours :"); foreach (var c in _bo2ClickOrder) sb.AppendLine($"    {c.Order}. {c.Drop.Label}"); }
             sb.AppendLine();
+
+            if (_currentBo2Map?.Id == "die_rise")
+            {
+                sb.AppendLine("══════════════════════════════════");
+                sb.AppendLine("  MANCHES SPÉCIALES (DIE RISE)");
+                sb.AppendLine("══════════════════════════════════");
+                sb.AppendLine(_bo2DogRoundHistory.Count == 0
+                    ? "  Aucune manche enregistrée."
+                    : "  Manches : " + string.Join(", ", _bo2DogRoundHistory.OrderBy(r => r).Select(FormatRound)));
+                sb.AppendLine();
+            }
+
+            if (_currentBo2Map?.Id == "mob")
+            {
+                sb.AppendLine("══════════════════════════════════");
+                sb.AppendLine("  MANCHES SPÉCIALES (MOB OF THE DEAD)");
+                sb.AppendLine("══════════════════════════════════");
+                sb.AppendLine(_bo2MobRoundHistory.Count == 0
+                    ? "  Aucune manche enregistrée."
+                    : "  Manches : " + string.Join(", ", _bo2MobRoundHistory.OrderBy(r => r)));
+                sb.AppendLine();
+            }
+
+            if (_currentBo2Map?.Id == "origins")
+            {
+                sb.AppendLine("══════════════════════════════════");
+                sb.AppendLine("  MANCHES SPÉCIALES (ORIGINS — PANZERS)");
+                sb.AppendLine("══════════════════════════════════");
+                sb.AppendLine(_bo2PanzerRoundHistory.Count == 0
+                    ? "  Aucune manche enregistrée."
+                    : "  Manches : " + string.Join(", ", _bo2PanzerRoundHistory.OrderBy(r => r)));
+                sb.AppendLine();
+
+                sb.AppendLine("══════════════════════════════════");
+                sb.AppendLine("  BONUS DES TANKS");
+                sb.AppendLine("══════════════════════════════════");
+                sb.AppendLine("  Tank 1 : " + (_bo2Tank1Rounds.Count == 0 ? "aucune manche" : string.Join(", ", _bo2Tank1Rounds.OrderBy(r => r))));
+                sb.AppendLine("  Tank 2 : " + (_bo2Tank2Rounds.Count == 0 ? "aucune manche" : string.Join(", ", _bo2Tank2Rounds.OrderBy(r => r))));
+                sb.AppendLine("  Tank 3 : " + (_bo2Tank3Rounds.Count == 0 ? "aucune manche" : string.Join(", ", _bo2Tank3Rounds.OrderBy(r => r))));
+                sb.AppendLine("  Générateurs : " + (_bo2GenRounds.Count == 0 ? "aucune manche" : string.Join(", ", _bo2GenRounds.OrderBy(r => r))));
+                sb.AppendLine();
+            }
         }
         else
         {
@@ -2122,6 +2836,10 @@ public partial class MainWindow : Window
         Bo2DropsPanel.Visibility      = Visibility.Visible;
         Bo2ResetButtonsPanel.Visibility = Visibility.Visible;
         Bo2HistoryBox.Visibility      = Visibility.Visible;
+        ApplyBo2DogVisibility(map.Id == "die_rise");
+        ApplyBo2MobVisibility(map.Id == "mob");
+        ApplyBo2PanzerVisibility(map.Id == "origins");
+        ApplyBo2TankVisibility(map.Id == "origins");
 
         RenderBo2Drops();
         RenderBo2History();
