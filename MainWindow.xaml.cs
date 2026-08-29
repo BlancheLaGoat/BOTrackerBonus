@@ -41,6 +41,9 @@ record BoxCycleRecord(int Num, List<VisitedBox> Visits);
 
 class AppState
 {
+    /// <summary>Numéro de version incrémental, utilisé pour la synchro multi : un état plus ancien
+    /// ne remplace jamais un état plus récent, peu importe l'ordre d'arrivée réseau.</summary>
+    public long              SyncVersion       { get; set; }
     public string?          CurrentMapId      { get; set; }
     public List<string>     DisabledIds       { get; set; } = [];
     public List<string>     BoxSelected       { get; set; } = [];
@@ -272,7 +275,7 @@ public partial class MainWindow : Window
     // c'est l'identifiant du LOGICIEL, pas d'un compte. Tous les
     // utilisateurs de l'app partagent ce même Client ID, mais chacun
     // se connecte ensuite avec SON PROPRE compte Twitch.
-    private const string TwitchClientId = "7rqkqvjo28olg68jkf0c5ss01r9pbs";
+    private const string TwitchClientId = "COLLE_TON_CLIENT_ID_ICI";
 
     private TwitchConfig _twitchConfig = new();
     private string?      _twitchAccessToken = null;
@@ -497,6 +500,8 @@ public partial class MainWindow : Window
 
     // Flag pour éviter les boucles de sync infinie
     private bool _isSyncingFromRemote = false;
+    /// <summary>Compteur de version local. Incrémenté à chaque changement local, jamais reculé par le réseau.</summary>
+    private long _syncVersion = 0;
     // Dernière boîte du cycle
     private string? _lastVisitedLocation = null;
 
@@ -709,12 +714,12 @@ public partial class MainWindow : Window
                         {
                             _connectedPlayers[clientIpGlobal] = pseudo;
                             RefreshPlayersList();
-                            ApplyRemoteState(json);
+                            ApplyRemoteState(json, asHostAcceptingPush: true);
                         });
                     }
                     catch
                     {
-                        Dispatcher.Invoke(() => ApplyRemoteState(json));
+                        Dispatcher.Invoke(() => ApplyRemoteState(json, asHostAcceptingPush: true));
                     }
                     resp.StatusCode = 200;
                 }
@@ -894,6 +899,7 @@ public partial class MainWindow : Window
 
     private AppState BuildState() => new()
     {
+        SyncVersion      = _syncVersion,
         CurrentMapId     = _currentMap?.Id,
         DisabledIds      = [.._disabledIds],
         BoxSelected      = [.._boxSelected],
@@ -928,16 +934,29 @@ public partial class MainWindow : Window
         LastBoxLocation  = _lastVisitedLocation,
     };
 
-    /// <summary>Applique un état reçu du réseau sans déclencher une nouvelle sync.</summary>
-    private void ApplyRemoteState(string json)
+    /// <summary>
+    /// Applique un état reçu du réseau sans déclencher une nouvelle sync.
+    /// Un état dont la version n'est pas plus récente que ce qu'on connaît déjà est ignoré
+    /// (protège contre une réponse réseau en retard qui écraserait un clic local tout frais).
+    /// L'hôte, lui, accepte toujours un push d'un joueur approuvé et génère sa propre
+    /// version faisant autorité (asHostAcceptingPush=true), plutôt que de se fier au
+    /// numéro envoyé par le client (qui pourrait entrer en collision avec un autre joueur).
+    /// </summary>
+    private void ApplyRemoteState(string json, bool asHostAcceptingPush = false)
     {
         if (_isSyncingFromRemote) return;
+
+        AppState? state;
+        try { state = JsonSerializer.Deserialize<AppState>(json, JsonOpts); }
+        catch { return; }
+        if (state == null) return;
+
+        if (!asHostAcceptingPush && state.SyncVersion <= _syncVersion)
+            return; // état périmé ou déjà connu : on l'ignore plutôt que de reculer
+
         _isSyncingFromRemote = true;
         try
         {
-            var state = JsonSerializer.Deserialize<AppState>(json, JsonOpts);
-            if (state == null) return;
-
             // --- disabled ---
             _disabledIds.Clear();
             foreach (var id in state.DisabledIds)
@@ -1077,6 +1096,14 @@ public partial class MainWindow : Window
         {
             _isSyncingFromRemote = false;
         }
+
+        // On adopte le nouveau numéro de version : soit celui du réseau (client),
+        // soit un nouveau numéro faisant autorité généré par l'hôte.
+        _syncVersion = asHostAcceptingPush ? _syncVersion + 1 : state.SyncVersion;
+
+        // Important : un changement venant du réseau (l'autre joueur) doit aussi
+        // rafraîchir l'overlay OBS, sinon il ne se met à jour que sur les clics locaux.
+        RefreshOverlayIfOpen();
     }
 
 
@@ -1305,6 +1332,13 @@ public partial class MainWindow : Window
     // ================================================================
     private void SaveState()
     {
+        // Un changement LOCAL (pas reçu du réseau) fait avancer la version AVANT de
+        // construire l'état à écrire/envoyer : ça garantit qu'un état plus ancien reçu
+        // en retard du réseau ne puisse jamais écraser un changement plus récent,
+        // peu importe l'ordre d'arrivée des requêtes.
+        if (!_isSyncingFromRemote)
+            _syncVersion++;
+
         try
         {
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(SavePath)!);
