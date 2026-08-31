@@ -78,6 +78,8 @@
                         <Button x:Name="ModeBoxBtn" Content="BOÎTE"     Style="{StaticResource ModeBtn}" Click="ModeBox_Click"/>
                     </StackPanel>
                     <StackPanel x:Name="HeaderRightControlsPanel" DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="BonusTypesBtn" Content="BONUS" Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="BonusTypesButton_Click"
+                                ToolTip="Activer/désactiver Carpenter, Fire Sale, Death Machine, etc. directement depuis l'overlay"/>
                         <Button x:Name="OpaqueBtn" Content="OPAQUE" Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="OpaqueButton_Click"
                                 ToolTip="Bascule entre fond totalement transparent (pour OBS Window Capture) et fond plein (pour utiliser la fenêtre normalement, sans OBS)"/>
                         <Button x:Name="TopBtn"  Content="FOND"   Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="TopButton_Click"/>
@@ -94,6 +96,9 @@
             <!-- Contenu -->
             <Border x:Name="ContentBarBorder" Background="Transparent" CornerRadius="0,0,8,8" Padding="12,10">
                 <StackPanel>
+                    <!-- Activer/désactiver les bonus optionnels (Carpenter, Fire Sale, ...) -->
+                    <WrapPanel x:Name="BonusTypesPanel" Orientation="Horizontal" Margin="0,0,0,10" Visibility="Collapsed"/>
+
                     <WrapPanel x:Name="CardsPanel" Orientation="Horizontal"/>
                     <TextBlock x:Name="EmptyText"
                                FontFamily="Consolas" FontSize="11"

@@ -44,6 +44,16 @@ class AppState
     /// <summary>Numéro de version incrémental, utilisé pour la synchro multi : un état plus ancien
     /// ne remplace jamais un état plus récent, peu importe l'ordre d'arrivée réseau.</summary>
     public long              SyncVersion       { get; set; }
+    /// <summary>Version dédiée aux bonus activables/désactivables (Carpenter, etc.), pour qu'un
+    /// changement de ce réglage précis ne soit jamais écrasé par un état global arrivé en retard.</summary>
+    public long              DisabledIdsVersion    { get; set; }
+    public long              Bo2DisabledIdsVersion { get; set; }
+    /// <summary>Versions dédiées aux manches spéciales : chaque joueur (hôte ou invité) doit pouvoir
+    /// les modifier sans qu'un état global arrivé en retard ne les écrase.</summary>
+    public long              DogRoundsVersion       { get; set; }
+    public long              Bo2DogRoundsVersion    { get; set; }
+    public long              Bo2MobRoundsVersion    { get; set; }
+    public long              Bo2PanzerRoundsVersion { get; set; }
     public string?          CurrentMapId      { get; set; }
     public List<string>     DisabledIds       { get; set; } = [];
     public List<string>     BoxSelected       { get; set; } = [];
@@ -502,6 +512,14 @@ public partial class MainWindow : Window
     private bool _isSyncingFromRemote = false;
     /// <summary>Compteur de version local. Incrémenté à chaque changement local, jamais reculé par le réseau.</summary>
     private long _syncVersion = 0;
+    /// <summary>Versions dédiées aux bonus activables/désactivables : protège ce réglage précis
+    /// d'un écrasement par un état global arrivé en retard (ex: l'hôte plus actif au même moment).</summary>
+    private long _disabledIdsVersion = 0;
+    private long _bo2DisabledIdsVersion = 0;
+    private long _dogRoundsVersion = 0;
+    private long _bo2DogRoundsVersion = 0;
+    private long _bo2MobRoundsVersion = 0;
+    private long _bo2PanzerRoundsVersion = 0;
     // Dernière boîte du cycle
     private string? _lastVisitedLocation = null;
 
@@ -900,6 +918,12 @@ public partial class MainWindow : Window
     private AppState BuildState() => new()
     {
         SyncVersion      = _syncVersion,
+        DisabledIdsVersion    = _disabledIdsVersion,
+        Bo2DisabledIdsVersion = _bo2DisabledIdsVersion,
+        DogRoundsVersion       = _dogRoundsVersion,
+        Bo2DogRoundsVersion    = _bo2DogRoundsVersion,
+        Bo2MobRoundsVersion    = _bo2MobRoundsVersion,
+        Bo2PanzerRoundsVersion = _bo2PanzerRoundsVersion,
         CurrentMapId     = _currentMap?.Id,
         DisabledIds      = [.._disabledIds],
         BoxSelected      = [.._boxSelected],
@@ -957,40 +981,60 @@ public partial class MainWindow : Window
         _isSyncingFromRemote = true;
         try
         {
-            // --- disabled ---
-            _disabledIds.Clear();
-            foreach (var id in state.DisabledIds)
+            // --- disabled --- (version dédiée : ne recule jamais, même si le reste de l'état accepté est plus ancien)
+            if (state.DisabledIdsVersion >= _disabledIdsVersion)
             {
-                _disabledIds.Add(id);
-                if (_toggleButtons.TryGetValue(id, out var tb)) tb.IsChecked = false;
+                _disabledIds.Clear();
+                foreach (var id in state.DisabledIds)
+                {
+                    _disabledIds.Add(id);
+                    if (_toggleButtons.TryGetValue(id, out var tb)) tb.IsChecked = false;
+                }
+                // Réactiver les autres
+                foreach (var (id, tb) in _toggleButtons)
+                    if (!_disabledIds.Contains(id)) tb.IsChecked = true;
+                _disabledIdsVersion = state.DisabledIdsVersion;
             }
-            // Réactiver les autres
-            foreach (var (id, tb) in _toggleButtons)
-                if (!_disabledIds.Contains(id)) tb.IsChecked = true;
 
-            // --- dog rounds ---
-            _currentDogRound = state.CurrentDogRound;
-            _dogRoundHistory  = state.DogRoundHistory;
-            UpdateDogRoundDisplay();
-            RenderDogHistory();
+            // --- dog rounds --- (version dédiée : ne recule jamais)
+            if (state.DogRoundsVersion >= _dogRoundsVersion)
+            {
+                _currentDogRound = state.CurrentDogRound;
+                _dogRoundHistory  = state.DogRoundHistory;
+                UpdateDogRoundDisplay();
+                RenderDogHistory();
+                _dogRoundsVersion = state.DogRoundsVersion;
+            }
 
             // --- dog rounds BO2 (Die Rise) ---
-            _currentBo2DogRound = state.CurrentBo2DogRound;
-            _bo2DogRoundHistory  = state.Bo2DogRoundHistory;
-            UpdateBo2DogRoundDisplay();
-            RenderBo2DogHistory();
+            if (state.Bo2DogRoundsVersion >= _bo2DogRoundsVersion)
+            {
+                _currentBo2DogRound = state.CurrentBo2DogRound;
+                _bo2DogRoundHistory  = state.Bo2DogRoundHistory;
+                UpdateBo2DogRoundDisplay();
+                RenderBo2DogHistory();
+                _bo2DogRoundsVersion = state.Bo2DogRoundsVersion;
+            }
 
             // --- manches spéciales BO2 (Mob of the Dead) ---
-            _currentBo2MobRound = state.CurrentBo2MobRound;
-            _bo2MobRoundHistory  = state.Bo2MobRoundHistory;
-            UpdateBo2MobRoundDisplay();
-            RenderBo2MobHistory();
+            if (state.Bo2MobRoundsVersion >= _bo2MobRoundsVersion)
+            {
+                _currentBo2MobRound = state.CurrentBo2MobRound;
+                _bo2MobRoundHistory  = state.Bo2MobRoundHistory;
+                UpdateBo2MobRoundDisplay();
+                RenderBo2MobHistory();
+                _bo2MobRoundsVersion = state.Bo2MobRoundsVersion;
+            }
 
             // --- manches spéciales BO2 (Origins, Panzers) ---
-            _currentBo2PanzerRound = state.CurrentBo2PanzerRound;
-            _bo2PanzerRoundHistory  = state.Bo2PanzerRoundHistory;
-            UpdateBo2PanzerRoundDisplay();
-            RenderBo2PanzerHistory();
+            if (state.Bo2PanzerRoundsVersion >= _bo2PanzerRoundsVersion)
+            {
+                _currentBo2PanzerRound = state.CurrentBo2PanzerRound;
+                _bo2PanzerRoundHistory  = state.Bo2PanzerRoundHistory;
+                UpdateBo2PanzerRoundDisplay();
+                RenderBo2PanzerHistory();
+                _bo2PanzerRoundsVersion = state.Bo2PanzerRoundsVersion;
+            }
 
             // --- bonus des tanks BO2 (Origins) ---
             _bo2Tank1Rounds = state.Bo2Tank1Rounds;
@@ -1013,6 +1057,7 @@ public partial class MainWindow : Window
                 MapTitleText.Text = map.Name.ToUpper();
 
                 ApplyBoxVisibility(map.BoxLocations.Count > 0);
+                ApplyDogVisibility(MapsWithDogRounds.Contains(map.Id));
                 DropsPanel.Visibility           = Visibility.Visible;
                 ResetButtonsPanel.Visibility    = Visibility.Visible;
                 HistoryBox.Visibility           = Visibility.Visible;
@@ -1044,16 +1089,20 @@ public partial class MainWindow : Window
 
             // ─── BO2 ───────────────────────────────────────────────
 
-            // Toggles BO2 (Carpenter / Fire Sale)
-            _bo2DisabledIds.Clear();
-            foreach (var id in state.Bo2DisabledIds)
+            // Toggles BO2 (Carpenter / Fire Sale) — version dédiée, ne recule jamais
+            if (state.Bo2DisabledIdsVersion >= _bo2DisabledIdsVersion)
             {
-                if (id == "zombie_blood") continue; // jamais désactivable
-                _bo2DisabledIds.Add(id);
-                if (_bo2ToggleButtons.TryGetValue(id, out var tb2)) tb2.IsChecked = false;
+                _bo2DisabledIds.Clear();
+                foreach (var id in state.Bo2DisabledIds)
+                {
+                    if (id == "zombie_blood") continue; // jamais désactivable
+                    _bo2DisabledIds.Add(id);
+                    if (_bo2ToggleButtons.TryGetValue(id, out var tb2)) tb2.IsChecked = false;
+                }
+                foreach (var (id, tb2) in _bo2ToggleButtons)
+                    if (!_bo2DisabledIds.Contains(id)) tb2.IsChecked = true;
+                _bo2DisabledIdsVersion = state.Bo2DisabledIdsVersion;
             }
-            foreach (var (id, tb2) in _bo2ToggleButtons)
-                if (!_bo2DisabledIds.Contains(id)) tb2.IsChecked = true;
 
             // Map BO2
             var bo2Map = state.CurrentBo2MapId != null
@@ -1410,6 +1459,7 @@ public partial class MainWindow : Window
 
                     bool hasBox = map.BoxLocations.Count > 0;
                     ApplyBoxVisibility(hasBox);
+                    ApplyDogVisibility(MapsWithDogRounds.Contains(map.Id));
                     DropsPanel.Visibility           = Visibility.Visible;
                     ResetButtonsPanel.Visibility    = Visibility.Visible;
                     HistoryBox.Visibility           = Visibility.Visible;
@@ -1680,6 +1730,7 @@ public partial class MainWindow : Window
 
         bool hasBox = map.BoxLocations.Count > 0;
         ApplyBoxVisibility(hasBox);
+        ApplyDogVisibility(MapsWithDogRounds.Contains(map.Id));
         DropsPanel.Visibility           = Visibility.Visible;
         ResetButtonsPanel.Visibility    = Visibility.Visible;
         HistoryBox.Visibility           = Visibility.Visible;
@@ -1690,6 +1741,20 @@ public partial class MainWindow : Window
         UpdateMapInlineBadge();
         SaveState();
         RefreshOverlayIfOpen();
+    }
+
+    // Maps BO1 ayant effectivement des manches spéciales (les autres n'ont pas cette section)
+    private static readonly HashSet<string> MapsWithDogRounds = new()
+    {
+        "kino", "five", "ascension", "shi", "riese",
+    };
+
+    private void ApplyDogVisibility(bool hasDogRounds)
+    {
+        DogSeparator.Visibility     = hasDogRounds ? Visibility.Visible : Visibility.Collapsed;
+        DogLabel.Visibility         = hasDogRounds ? Visibility.Visible : Visibility.Collapsed;
+        DogControlsPanel.Visibility = hasDogRounds ? Visibility.Visible : Visibility.Collapsed;
+        DogHistoryBox.Visibility    = (hasDogRounds && _dogRoundHistory.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ================================================================
@@ -1726,6 +1791,7 @@ public partial class MainWindow : Window
         var id = (string)btn.Tag;
         if (btn.IsChecked == true) _disabledIds.Remove(id);
         else                       _disabledIds.Add(id);
+        _disabledIdsVersion++;
 
         if (_currentMap != null) { RefreshAvailableDrops(); RenderDrops(); RenderHistory(); }
         SaveState();
@@ -1782,6 +1848,7 @@ public partial class MainWindow : Window
         }
         _currentDogRound = round;
         if (!_dogRoundHistory.Contains(round)) _dogRoundHistory.Insert(0, round);
+        _dogRoundsVersion++;
         DogRoundInput.Clear();
         UpdateDogRoundDisplay();
         RenderDogHistory();
@@ -1794,6 +1861,7 @@ public partial class MainWindow : Window
     {
         _currentDogRound = null;
         _dogRoundHistory  = [];
+        _dogRoundsVersion++;
         DogRoundInput.Clear();
         UpdateDogRoundDisplay();
         RenderDogHistory();
@@ -1811,6 +1879,7 @@ public partial class MainWindow : Window
             int next = current + step;
             _currentDogRound = next;
             if (!_dogRoundHistory.Contains(next)) _dogRoundHistory.Insert(0, next);
+            _dogRoundsVersion++;
             UpdateDogRoundDisplay();
             RenderDogHistory();
             SaveState();
@@ -1850,8 +1919,9 @@ public partial class MainWindow : Window
     private void RenderDogHistory()
     {
         DogHistoryPanel.Children.Clear();
+        bool hasDogRounds = _currentMap != null && MapsWithDogRounds.Contains(_currentMap.Id);
         if (_dogRoundHistory.Count == 0) { DogHistoryBox.Visibility = Visibility.Collapsed; return; }
-        DogHistoryBox.Visibility = Visibility.Visible;
+        DogHistoryBox.Visibility = hasDogRounds ? Visibility.Visible : Visibility.Collapsed;
 
         foreach (int round in _dogRoundHistory)
         {
@@ -1871,7 +1941,7 @@ public partial class MainWindow : Window
                 stack.Children.Add(new TextBlock { Text = "● ", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushAccent"), VerticalAlignment = VerticalAlignment.Center });
             stack.Children.Add(new TextBlock { Text = FormatRound(round), FontFamily = new FontFamily("Consolas"), FontSize = 13, FontWeight = isCurrent ? FontWeights.Bold : FontWeights.Normal, Foreground = isCurrent ? Brush("BrushAccentLight") : Brush("BrushTextSecondary"), VerticalAlignment = VerticalAlignment.Center });
             badge.Child = stack;
-            badge.MouseLeftButtonUp += (_, _) => { _currentDogRound = round; UpdateDogRoundDisplay(); RenderDogHistory(); SaveState(); };
+            badge.MouseLeftButtonUp += (_, _) => { _currentDogRound = round; _dogRoundsVersion++; UpdateDogRoundDisplay(); RenderDogHistory(); SaveState(); };
             DogHistoryPanel.Children.Add(badge);
         }
     }
@@ -1900,6 +1970,7 @@ public partial class MainWindow : Window
         }
         _currentBo2DogRound = round;
         if (!_bo2DogRoundHistory.Contains(round)) _bo2DogRoundHistory.Insert(0, round);
+        _bo2DogRoundsVersion++;
         Bo2DogRoundInput.Clear();
         UpdateBo2DogRoundDisplay();
         RenderBo2DogHistory();
@@ -1912,6 +1983,7 @@ public partial class MainWindow : Window
     {
         _currentBo2DogRound = null;
         _bo2DogRoundHistory  = [];
+        _bo2DogRoundsVersion++;
         Bo2DogRoundInput.Clear();
         UpdateBo2DogRoundDisplay();
         RenderBo2DogHistory();
@@ -1929,6 +2001,7 @@ public partial class MainWindow : Window
             int next = current + step;
             _currentBo2DogRound = next;
             if (!_bo2DogRoundHistory.Contains(next)) _bo2DogRoundHistory.Insert(0, next);
+            _bo2DogRoundsVersion++;
             UpdateBo2DogRoundDisplay();
             RenderBo2DogHistory();
             SaveState();
@@ -1976,7 +2049,7 @@ public partial class MainWindow : Window
                 stack.Children.Add(new TextBlock { Text = "● ", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushAccent"), VerticalAlignment = VerticalAlignment.Center });
             stack.Children.Add(new TextBlock { Text = FormatRound(round), FontFamily = new FontFamily("Consolas"), FontSize = 13, FontWeight = isCurrent ? FontWeights.Bold : FontWeights.Normal, Foreground = isCurrent ? Brush("BrushAccentLight") : Brush("BrushTextSecondary"), VerticalAlignment = VerticalAlignment.Center });
             badge.Child = stack;
-            badge.MouseLeftButtonUp += (_, _) => { _currentBo2DogRound = round; UpdateBo2DogRoundDisplay(); RenderBo2DogHistory(); SaveState(); };
+            badge.MouseLeftButtonUp += (_, _) => { _currentBo2DogRound = round; _bo2DogRoundsVersion++; UpdateBo2DogRoundDisplay(); RenderBo2DogHistory(); SaveState(); };
             Bo2DogHistoryPanel.Children.Add(badge);
         }
     }
@@ -2006,6 +2079,7 @@ public partial class MainWindow : Window
         }
         _currentBo2MobRound = round;
         if (!_bo2MobRoundHistory.Contains(round)) _bo2MobRoundHistory.Insert(0, round);
+        _bo2MobRoundsVersion++;
         Bo2MobRoundInput.Clear();
         UpdateBo2MobRoundDisplay();
         RenderBo2MobHistory();
@@ -2017,6 +2091,7 @@ public partial class MainWindow : Window
     {
         _currentBo2MobRound = null;
         _bo2MobRoundHistory  = [];
+        _bo2MobRoundsVersion++;
         Bo2MobRoundInput.Clear();
         UpdateBo2MobRoundDisplay();
         RenderBo2MobHistory();
@@ -2035,6 +2110,7 @@ public partial class MainWindow : Window
             int next = current + step;
             _currentBo2MobRound = next;
             if (!_bo2MobRoundHistory.Contains(next)) _bo2MobRoundHistory.Insert(0, next);
+            _bo2MobRoundsVersion++;
             UpdateBo2MobRoundDisplay();
             RenderBo2MobHistory();
             SaveState();
@@ -2082,7 +2158,7 @@ public partial class MainWindow : Window
                 stack.Children.Add(new TextBlock { Text = "● ", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushAccent"), VerticalAlignment = VerticalAlignment.Center });
             stack.Children.Add(new TextBlock { Text = $"{round}", FontFamily = new FontFamily("Consolas"), FontSize = 13, FontWeight = isCurrent ? FontWeights.Bold : FontWeights.Normal, Foreground = isCurrent ? Brush("BrushAccentLight") : Brush("BrushTextSecondary"), VerticalAlignment = VerticalAlignment.Center });
             badge.Child = stack;
-            badge.MouseLeftButtonUp += (_, _) => { _currentBo2MobRound = round; UpdateBo2MobRoundDisplay(); RenderBo2MobHistory(); SaveState(); };
+            badge.MouseLeftButtonUp += (_, _) => { _currentBo2MobRound = round; _bo2MobRoundsVersion++; UpdateBo2MobRoundDisplay(); RenderBo2MobHistory(); SaveState(); };
             Bo2MobHistoryPanel.Children.Add(badge);
         }
     }
@@ -2112,6 +2188,7 @@ public partial class MainWindow : Window
         }
         _currentBo2PanzerRound = round;
         if (!_bo2PanzerRoundHistory.Contains(round)) _bo2PanzerRoundHistory.Insert(0, round);
+        _bo2PanzerRoundsVersion++;
         Bo2PanzerRoundInput.Clear();
         UpdateBo2PanzerRoundDisplay();
         RenderBo2PanzerHistory();
@@ -2122,6 +2199,7 @@ public partial class MainWindow : Window
     {
         _currentBo2PanzerRound = null;
         _bo2PanzerRoundHistory  = [];
+        _bo2PanzerRoundsVersion++;
         Bo2PanzerRoundInput.Clear();
         UpdateBo2PanzerRoundDisplay();
         RenderBo2PanzerHistory();
@@ -2138,6 +2216,7 @@ public partial class MainWindow : Window
             int next = current + step;
             _currentBo2PanzerRound = next;
             if (!_bo2PanzerRoundHistory.Contains(next)) _bo2PanzerRoundHistory.Insert(0, next);
+            _bo2PanzerRoundsVersion++;
             UpdateBo2PanzerRoundDisplay();
             RenderBo2PanzerHistory();
             SaveState();
@@ -2183,7 +2262,7 @@ public partial class MainWindow : Window
                 stack.Children.Add(new TextBlock { Text = "● ", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushAccent"), VerticalAlignment = VerticalAlignment.Center });
             stack.Children.Add(new TextBlock { Text = $"{round}", FontFamily = new FontFamily("Consolas"), FontSize = 13, FontWeight = isCurrent ? FontWeights.Bold : FontWeights.Normal, Foreground = isCurrent ? Brush("BrushAccentLight") : Brush("BrushTextSecondary"), VerticalAlignment = VerticalAlignment.Center });
             badge.Child = stack;
-            badge.MouseLeftButtonUp += (_, _) => { _currentBo2PanzerRound = round; UpdateBo2PanzerRoundDisplay(); RenderBo2PanzerHistory(); SaveState(); };
+            badge.MouseLeftButtonUp += (_, _) => { _currentBo2PanzerRound = round; _bo2PanzerRoundsVersion++; UpdateBo2PanzerRoundDisplay(); RenderBo2PanzerHistory(); SaveState(); };
             Bo2PanzerHistoryPanel.Children.Add(badge);
         }
     }
@@ -2607,6 +2686,7 @@ public partial class MainWindow : Window
     internal List<ClickedDrop> Bo2ClickOrderForOverlay => _bo2ClickOrder;
 
     // ── Manches spéciales BO1, pour l'overlay ──
+    internal bool       IsBo1DogMapActive => _currentMap != null && MapsWithDogRounds.Contains(_currentMap.Id);
     internal int?      CurrentDogRoundForOverlay => _currentDogRound;
     internal List<int> DogRoundHistoryForOverlay => _dogRoundHistory;
     internal void      AdvanceDogRoundFromOverlay(int step) => AdvanceDogRound(step);
@@ -2627,6 +2707,27 @@ public partial class MainWindow : Window
     /// <summary>Appelé par l'overlay quand on clique un bonus dedans : réutilise exactement la même logique que le tracker principal.</summary>
     internal void ToggleDropFromOverlay(string id)    => ToggleDrop(id);
     internal void ToggleBo2DropFromOverlay(string id) => ToggleBo2Drop(id);
+
+    // ── Bonus optionnels activables/désactivables (Carpenter, Fire Sale, ...), pour l'overlay ──
+    internal List<(string Id, string Label, bool Enabled)> Bo1ToggleablesForOverlay =>
+        _toggleButtons.Select(kv => (kv.Key, (string)kv.Value.Content, kv.Value.IsChecked == true)).ToList();
+
+    internal List<(string Id, string Label, bool Enabled)> Bo2ToggleablesForOverlay =>
+        _bo2ToggleButtons.Select(kv => (kv.Key, (string)kv.Value.Content, kv.Value.IsChecked == true)).ToList();
+
+    internal void ToggleBo1DropEnabledFromOverlay(string id)
+    {
+        if (!_toggleButtons.TryGetValue(id, out var btn)) return;
+        btn.IsChecked = !(btn.IsChecked == true);
+        DropToggleButton_Click(btn, new RoutedEventArgs());
+    }
+
+    internal void ToggleBo2DropEnabledFromOverlay(string id)
+    {
+        if (!_bo2ToggleButtons.TryGetValue(id, out var btn)) return;
+        btn.IsChecked = !(btn.IsChecked == true);
+        Bo2DropToggleButton_Click(btn, new RoutedEventArgs());
+    }
 
     private void OverlayButton_Click     (object sender, RoutedEventArgs e) => OpenOverlay(OverlayMode.Box);
     private void OverlayBonusButton_Click(object sender, RoutedEventArgs e) => OpenOverlay(OverlayMode.Bo1Bonus);
@@ -2924,6 +3025,7 @@ public partial class MainWindow : Window
         if (id == "zombie_blood") return; // never toggleable
         if (btn.IsChecked == true) _bo2DisabledIds.Remove(id);
         else                       _bo2DisabledIds.Add(id);
+        _bo2DisabledIdsVersion++;
 
         if (_currentBo2Map != null) { RefreshBo2AvailableDrops(); RenderBo2Drops(); RenderBo2History(); }
         SaveState();

@@ -193,14 +193,14 @@
         <!-- ═══════════════════════════════════════════════════════════ -->
 
         <!-- Séparateur manches spéciales -->
-        <Rectangle Grid.Row="2" Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" />
+        <Rectangle x:Name="DogSeparator" Grid.Row="2" Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" />
 
         <!-- Label manches spéciales -->
-        <TextBlock Grid.Row="3" Text="MANCHES SPÉCIALES"
+        <TextBlock x:Name="DogLabel" Grid.Row="3" Text="MANCHES SPÉCIALES"
                    Style="{StaticResource SectionLabelStyle}" />
 
         <!-- Contrôles manches spéciales -->
-        <StackPanel Grid.Row="4" Margin="0,0,0,16">
+        <StackPanel x:Name="DogControlsPanel" Grid.Row="4" Margin="0,0,0,16">
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                 <TextBlock Text="Première manche :"
                            VerticalAlignment="Center"
@@ -392,6 +392,14 @@
         </Grid>
 
         <StackPanel x:Name="BonusContentPanel" Grid.Row="11">
+            <TextBlock Text="ACTIVER / DESACTIVER DES BONUS"
+                       Style="{StaticResource SectionLabelStyle}" />
+
+            <WrapPanel x:Name="ToggleButtonsPanel"
+                       Orientation="Horizontal" Margin="0,0,0,16" />
+
+            <Rectangle Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Height="1" />
+
             <TextBlock Text="CLIQUE SUR LES BONUS AU FUR ET À MESURE QU'ILS TOMBENT"
                        Style="{StaticResource SectionLabelStyle}" Margin="0,0,0,16" />
 
@@ -422,14 +430,6 @@
                     <StackPanel x:Name="HistoryPanel" />
                 </StackPanel>
             </Border>
-
-            <Rectangle Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Height="1" />
-
-            <TextBlock Text="ACTIVER / DESACTIVER DES BONUS"
-                       Style="{StaticResource SectionLabelStyle}" />
-
-            <WrapPanel x:Name="ToggleButtonsPanel"
-                       Orientation="Horizontal" Margin="0,0,0,4" />
         </StackPanel>
 
       </Grid>
@@ -802,7 +802,7 @@
         <Rectangle x:Name="Bo2TankSeparator" Grid.Row="14"
                    Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Visibility="Collapsed" />
 
-        <TextBlock x:Name="Bo2TankLabelPanel" Grid.Row="15" Text="BONUS"
+        <TextBlock x:Name="Bo2TankLabelPanel" Grid.Row="15" Text="BONUS DES TANKS"
                    Style="{StaticResource SectionLabelStyle}" Visibility="Collapsed" />
 
         <StackPanel x:Name="Bo2TankContentPanel" Orientation="Horizontal" Grid.Row="16" Margin="0,0,0,24" Visibility="Collapsed">

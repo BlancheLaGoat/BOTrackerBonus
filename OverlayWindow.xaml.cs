@@ -62,6 +62,7 @@ namespace BO1Tracker
         {
             UpdateModeButtons();
             ReadAndRefresh();
+            ApplyOpaqueState(startOpaque: true); // ouverture en opaque par défaut
 
             var dir = Path.GetDirectoryName(SavePath)!;
             Directory.CreateDirectory(dir);
@@ -161,6 +162,66 @@ namespace BO1Tracker
                     BuildBoxCards();
                     break;
             }
+
+            // Le bouton BONUS n'a de sens qu'en mode Bo1Bonus / Bo2Bonus (pas pour la boîte)
+            BonusTypesBtn.Visibility = Mode == OverlayMode.Box ? Visibility.Collapsed : Visibility.Visible;
+            if (Mode == OverlayMode.Box) BonusTypesPanel.Visibility = Visibility.Collapsed;
+            if (BonusTypesPanel.Visibility == Visibility.Visible) BuildBonusTypesPanel();
+        }
+
+        // ── Activer/désactiver les bonus optionnels (Carpenter, Fire Sale, ...) depuis l'overlay ──
+        private void BonusTypesButton_Click(object sender, RoutedEventArgs e)
+        {
+            bool show = BonusTypesPanel.Visibility != Visibility.Visible;
+            BonusTypesPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            if (show) BuildBonusTypesPanel();
+        }
+
+        private void BuildBonusTypesPanel()
+        {
+            BonusTypesPanel.Children.Clear();
+            if (_owner == null) return;
+
+            var items = Mode == OverlayMode.Bo2Bonus ? _owner.Bo2ToggleablesForOverlay : _owner.Bo1ToggleablesForOverlay;
+            bool isBo2 = Mode == OverlayMode.Bo2Bonus;
+
+            foreach (var (id, label, enabled) in items)
+                BonusTypesPanel.Children.Add(MakeBonusTypeChip(id, label, enabled, isBo2));
+        }
+
+        private Border MakeBonusTypeChip(string id, string label, bool enabled, bool isBo2)
+        {
+            var tb = new TextBlock
+            {
+                Text       = (enabled ? "● " : "○ ") + label.ToUpper(),
+                FontFamily = new FontFamily("Consolas"),
+                FontSize   = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(enabled ? ColAccentLight : ColTextSecond),
+            };
+
+            var chip = new Border
+            {
+                Child           = tb,
+                Background      = new SolidColorBrush(enabled ? ColAccentDark : ColBgCard),
+                BorderBrush     = new SolidColorBrush(enabled ? ColAccent : ColBorder),
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(14),
+                Padding         = new Thickness(10, 4, 10, 4),
+                Margin          = new Thickness(0, 0, 6, 0),
+                Cursor          = Cursors.Hand,
+                Opacity         = enabled ? 1.0 : 0.65,
+            };
+
+            chip.MouseLeftButtonUp += (_, _) =>
+            {
+                if (_owner == null) return;
+                if (isBo2) _owner.ToggleBo2DropEnabledFromOverlay(id);
+                else       _owner.ToggleBo1DropEnabledFromOverlay(id);
+                RebuildCards(); // reconstruit aussi ce panneau puisqu'il est toujours visible
+            };
+
+            return chip;
         }
 
         /// <summary>Affiche TOUS les bonus disponibles (verts si déjà cliqués, orange pour le dernier en date)
@@ -262,10 +323,11 @@ namespace BO1Tracker
             return card;
         }
 
-        /// <summary>Section "manche spéciale" pour l'onglet BO1 (toujours disponible, pas liée à une map précise).</summary>
+        /// <summary>Section "manche spéciale" pour l'onglet BO1 : uniquement sur les maps qui en ont
+        /// vraiment (Kino, Five, Ascension, Shi No Numa, Der Riese), sinon rien.</summary>
         private void BuildBo1RoundSection()
         {
-            if (_owner == null) return;
+            if (_owner == null || !_owner.IsBo1DogMapActive) return;
             BuildRoundSection(
                 title: "MANCHE SPÉCIALE",
                 current: _owner.CurrentDogRoundForOverlay,
@@ -593,24 +655,27 @@ namespace BO1Tracker
         }
 
         private bool _opaqueBackground = false;
+        private static readonly Brush RootOpaqueBrush        = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0D0D0D"));
         private static readonly Brush HeaderBarDragBrush     = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#01000000")); // quasi invisible mais cliquable
         private static readonly Brush HeaderBarOpaqueBrush   = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#DD111111"));
         private static readonly Brush ContentBarOpaqueBrush  = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#CC111111"));
 
-        /// <summary>Bascule entre fond TOTALEMENT transparent (par défaut, rien que les cartes flottent
-        /// à l'écran — idéal pour OBS) et fond plein (pratique pour utiliser la fenêtre normalement
-        /// sur le bureau, sans passer par OBS). La barre du haut garde toujours un fond quasi
-        /// invisible (alpha=1) même en mode transparent, sinon la fenêtre ne serait plus déplaçable.</summary>
-        private void OpaqueButton_Click(object sender, RoutedEventArgs e)
+        /// <summary>Bascule entre fond TOTALEMENT transparent (rien que les cartes flottent à l'écran —
+        /// idéal pour OBS) et fond plein (pratique pour utiliser la fenêtre normalement sur le bureau,
+        /// sans passer par OBS). La barre du haut garde toujours un fond quasi invisible (alpha=1)
+        /// même en mode transparent, sinon la fenêtre ne serait plus déplaçable.</summary>
+        private void ApplyOpaqueState(bool startOpaque)
         {
-            _opaqueBackground = !_opaqueBackground;
+            _opaqueBackground = startOpaque;
 
-            RootGrid.Background          = _opaqueBackground ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0D0D0D")) : Brushes.Transparent;
-            HeaderBarBorder.Background   = _opaqueBackground ? HeaderBarOpaqueBrush  : HeaderBarDragBrush;
-            ContentBarBorder.Background  = _opaqueBackground ? ContentBarOpaqueBrush : Brushes.Transparent;
+            RootGrid.Background          = _opaqueBackground ? RootOpaqueBrush        : Brushes.Transparent;
+            HeaderBarBorder.Background   = _opaqueBackground ? HeaderBarOpaqueBrush   : HeaderBarDragBrush;
+            ContentBarBorder.Background  = _opaqueBackground ? ContentBarOpaqueBrush  : Brushes.Transparent;
 
             OpaqueBtn.Content = _opaqueBackground ? "TRANSPARENT" : "OPAQUE";
         }
+
+        private void OpaqueButton_Click(object sender, RoutedEventArgs e) => ApplyOpaqueState(!_opaqueBackground);
 
         private bool _headerCollapsed = false;
 
