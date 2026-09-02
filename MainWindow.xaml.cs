@@ -2084,6 +2084,7 @@ public partial class MainWindow : Window
         UpdateBo2MobRoundDisplay();
         RenderBo2MobHistory();
         SaveState();
+        SendTwitchRoundCommand(_bo2MobRoundHistory);
         RefreshOverlayIfOpen();
     }
 
@@ -2114,6 +2115,7 @@ public partial class MainWindow : Window
             UpdateBo2MobRoundDisplay();
             RenderBo2MobHistory();
             SaveState();
+            SendTwitchRoundCommand(_bo2MobRoundHistory);
             RefreshOverlayIfOpen();
         }
     }
@@ -2193,6 +2195,7 @@ public partial class MainWindow : Window
         UpdateBo2PanzerRoundDisplay();
         RenderBo2PanzerHistory();
         SaveState();
+        SendTwitchRoundCommand(_bo2PanzerRoundHistory);
     }
 
     private void ResetBo2PanzerRoundsButton_Click(object sender, RoutedEventArgs e)
@@ -2220,6 +2223,7 @@ public partial class MainWindow : Window
             UpdateBo2PanzerRoundDisplay();
             RenderBo2PanzerHistory();
             SaveState();
+            SendTwitchRoundCommand(_bo2PanzerRoundHistory);
         }
     }
 
