@@ -356,7 +356,7 @@ namespace BO1Tracker
                 BuildRoundSection(
                     title: "MANCHE SPÉCIALE (MOB OF THE DEAD)",
                     current: _owner.CurrentBo2MobRoundForOverlay,
-                    steps: [3, 4, 5],
+                    steps: [4, 5, 6],
                     formatRound: r => $"{r}",
                     onAdvance: step => _owner.AdvanceBo2MobRoundFromOverlay(step));
             }
