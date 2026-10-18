@@ -257,7 +257,7 @@ namespace BO1Tracker
                 Padding             = new Thickness(6, 1, 6, 1),
                 Margin              = new Thickness(0, 0, 0, 4),
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Visibility          = order.HasValue ? Visibility.Visible : Visibility.Collapsed,
+                Visibility          = order.HasValue ? Visibility.Visible : Visibility.Hidden,
                 Child = new TextBlock
                 {
                     Text       = order.HasValue ? $"{order}" : "",
@@ -293,24 +293,22 @@ namespace BO1Tracker
             stack.Children.Add(new Border { Height = 6 });
             stack.Children.Add(lblBlock);
 
+            // BorderThickness et absence d'effet de lueur (DropShadowEffect) fixés en dur :
+            // avant, ils changeaient selon l'état (sélectionné / dernier), ce qui faisait
+            // "gonfler" visuellement la carte au clic dans OBS. Seules les couleurs
+            // (fond / bordure / texte) indiquent maintenant l'état, la taille ne bouge jamais.
             var card = new Border
             {
                 Child           = stack,
                 MinWidth        = 96,
                 Padding         = new Thickness(14, 12, 14, 12),
                 CornerRadius    = new CornerRadius(10),
-                BorderThickness = new Thickness(isSelected || isLast ? 2 : 1),
+                BorderThickness = new Thickness(2),
                 Background      = new SolidColorBrush(bgColor),
                 BorderBrush     = new SolidColorBrush(borderColor),
                 Margin          = new Thickness(0, 0, 12, 0),
                 Cursor          = Cursors.Hand,
             };
-
-            card.Effect = isLast
-                ? new DropShadowEffect { Color = ColYellow, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.6 }
-                : isSelected
-                    ? new DropShadowEffect { Color = ColAccent, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.55 }
-                    : null;
 
             card.MouseLeftButtonUp += (_, _) =>
             {
@@ -498,10 +496,6 @@ namespace BO1Tracker
                 Margin          = new Thickness(0, 0, 12, 0),
             };
 
-            card.Effect = isLast
-                ? new DropShadowEffect { Color = ColYellow,  BlurRadius = 14, ShadowDepth = 0, Opacity = 0.6 }
-                : new DropShadowEffect { Color = ColAccent,  BlurRadius = 14, ShadowDepth = 0, Opacity = 0.55 };
-
             return card;
         }
 
@@ -536,7 +530,7 @@ namespace BO1Tracker
                 Padding             = new Thickness(6, 1, 6, 1),
                 Margin              = new Thickness(0, 0, 0, 4),
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Visibility          = order.HasValue ? Visibility.Visible : Visibility.Collapsed,
+                Visibility          = order.HasValue ? Visibility.Visible : Visibility.Hidden,
                 Child = new TextBlock
                 {
                     Text       = order.HasValue ? $"{order}" : "",
@@ -581,16 +575,11 @@ namespace BO1Tracker
                 MinWidth        = 96,
                 Padding         = new Thickness(14, 12, 14, 12),
                 CornerRadius    = new CornerRadius(10),
-                BorderThickness = new Thickness(highlight || order.HasValue ? 2 : 1),
+                BorderThickness = new Thickness(2),
                 Background      = new SolidColorBrush(bgColor),
                 BorderBrush     = new SolidColorBrush(borderColor),
                 Margin          = new Thickness(0, 0, 12, 0),
             };
-
-            if (highlight)
-                card.Effect = new DropShadowEffect { Color = ColYellow, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.6 };
-            else if (order.HasValue)
-                card.Effect = new DropShadowEffect { Color = ColAccent, BlurRadius = 14, ShadowDepth = 0, Opacity = 0.55 };
 
             return card;
         }
