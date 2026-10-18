@@ -1622,6 +1622,10 @@ public partial class MainWindow : Window
 
         LoadTwitchConfig();
         InitTwitchUiFromConfig();
+
+        // Vérification de mise à jour en arrière-plan (silencieuse si rien
+        // de nouveau, ou si pas de connexion — ne bloque jamais le démarrage).
+        _ = Task.Run(UpdateChecker.CheckForUpdatesAsync);
     }
 
     private void InitTwitchUiFromConfig()
