@@ -1625,7 +1625,7 @@ public partial class MainWindow : Window
 
         // Vérification de mise à jour en arrière-plan (silencieuse si rien
         // de nouveau, ou si pas de connexion — ne bloque jamais le démarrage).
-        _ = Task.Run(UpdateChecker.CheckForUpdatesAsync);
+        _ = Task.Run(() => UpdateChecker.CheckForUpdatesAsync());
     }
 
     private void InitTwitchUiFromConfig()
@@ -2804,6 +2804,25 @@ public partial class MainWindow : Window
     // ================================================================
     //  EXPORT NOTEPAD
     // ================================================================
+    private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        var btn = (Button)sender;
+        string original = btn.Content.ToString() ?? "";
+        btn.IsEnabled = false;
+        btn.Content   = "VÉRIFICATION...";
+        try
+        {
+            await UpdateChecker.CheckForUpdatesAsync(manual: true);
+        }
+        finally
+        {
+            // Si une mise à jour a été acceptée, l'appli s'est déjà fermée
+            // (Application.Shutdown) et ce code ne s'exécute jamais.
+            btn.IsEnabled = true;
+            btn.Content   = original;
+        }
+    }
+
     private void ExportTxtButton_Click(object sender, RoutedEventArgs e)
     {
         var sb  = new StringBuilder();

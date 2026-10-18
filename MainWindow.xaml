@@ -105,6 +105,18 @@
                 </Border>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button x:Name="CheckUpdateButton"
+                        Content="&#x1F504; VÉRIFIER MAJ"
+                        VerticalAlignment="Center"
+                        FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                        Padding="14,8"
+                        Margin="0,0,8,0"
+                        Background="{StaticResource BrushBgCard}"
+                        Foreground="{StaticResource BrushTextSecondary}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="1"
+                        Cursor="Hand"
+                        Click="CheckUpdateButton_Click" />
                 <Button x:Name="ExportTxtButton"
                         Content="&#x1F4C4; ENREGISTRER"
                         VerticalAlignment="Center"

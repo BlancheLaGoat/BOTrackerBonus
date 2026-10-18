@@ -48,10 +48,17 @@ internal static class UpdateChecker
     }
 
     /// <summary>
-    /// À appeler une seule fois au démarrage, en arrière-plan (ne bloque
-    /// jamais l'UI et ne lève jamais d'exception vers l'appelant).
+    /// Vérifie s'il existe une nouvelle version.
+    /// <paramref name="manual"/> = false (appel automatique au démarrage) :
+    /// ne dit jamais rien si tout va bien ou en cas d'erreur réseau, ne
+    /// propose une mise à jour que si une version plus récente que la
+    /// dernière vue est trouvée.
+    /// <paramref name="manual"/> = true (bouton "Vérifier les mises à
+    /// jour") : donne toujours un retour visuel — à jour, erreur, ou
+    /// proposition de mise à jour — même au tout premier lancement.
+    /// Ne lève jamais d'exception vers l'appelant.
     /// </summary>
-    public static async Task CheckForUpdatesAsync()
+    public static async Task CheckForUpdatesAsync(bool manual = false)
     {
         try
         {
@@ -62,27 +69,54 @@ internal static class UpdateChecker
                 $"https://api.github.com/repos/{Owner}/{Repo}/releases/tags/latest");
 
             var release = JsonSerializer.Deserialize<GhRelease>(json);
-            if (release?.published_at == null || release.assets == null) return;
+            if (release?.published_at == null || release.assets == null)
+            {
+                ShowManualError(manual, "Réponse inattendue de GitHub (Release \"latest\" introuvable).");
+                return;
+            }
 
             var exeAsset = Array.Find(release.assets,
                 a => a.name != null && a.name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
-            if (exeAsset?.browser_download_url == null) return;
+            if (exeAsset?.browser_download_url == null)
+            {
+                ShowManualError(manual, "Aucun .exe trouvé dans les assets de la Release \"latest\".");
+                return;
+            }
 
             var state = LoadState();
 
             // Premier lancement (pas d'historique local) : on mémorise la
-            // version actuelle sans rien demander, pour ne pas proposer une
-            // "mise à jour" dès la première exécution.
+            // version actuelle sans proposer de "mise à jour" automatiquement.
             if (string.IsNullOrEmpty(state.LastSeenPublishedAt))
             {
                 SaveState(new UpdateState { LastSeenPublishedAt = release.published_at });
+                if (manual)
+                {
+                    Application.Current.Dispatcher.Invoke(() => MessageBox.Show(
+                        "Aucun historique local : la version actuelle vient d'être enregistrée comme référence.\n\n" +
+                        "Publie une nouvelle version sur GitHub puis relance cette vérification pour la détecter.",
+                        "Vérification des mises à jour",
+                        MessageBoxButton.OK, MessageBoxImage.Information));
+                }
                 return;
             }
 
             if (!DateTime.TryParse(release.published_at, out var remoteDate) ||
-                !DateTime.TryParse(state.LastSeenPublishedAt, out var localDate) ||
-                remoteDate <= localDate)
+                !DateTime.TryParse(state.LastSeenPublishedAt, out var localDate))
             {
+                ShowManualError(manual, "Impossible de lire les dates de version.");
+                return;
+            }
+
+            if (remoteDate <= localDate)
+            {
+                if (manual)
+                {
+                    Application.Current.Dispatcher.Invoke(() => MessageBox.Show(
+                        "Tu es déjà sur la dernière version disponible.",
+                        "Vérification des mises à jour",
+                        MessageBoxButton.OK, MessageBoxImage.Information));
+                }
                 return; // Rien de plus récent que ce qu'on a déjà vu.
             }
 
@@ -108,10 +142,20 @@ internal static class UpdateChecker
         }
         catch
         {
-            // Pas de connexion, API GitHub indisponible, etc. : on ignore
-            // silencieusement. L'appli doit toujours démarrer normalement
-            // même sans accès réseau.
+            // Pas de connexion, API GitHub indisponible, etc. L'appli doit
+            // toujours démarrer normalement même sans accès réseau — mais si
+            // c'est une vérification manuelle, on prévient l'utilisateur.
+            ShowManualError(manual, "Impossible de contacter GitHub (pas de connexion internet ?).");
         }
+    }
+
+    private static void ShowManualError(bool manual, string reason)
+    {
+        if (!manual) return;
+        Application.Current.Dispatcher.Invoke(() => MessageBox.Show(
+            "Échec de la vérification des mises à jour.\n\n" + reason,
+            "Vérification des mises à jour",
+            MessageBoxButton.OK, MessageBoxImage.Warning));
     }
 
     private static async Task DownloadAndInstallAsync(string downloadUrl, string publishedAt)
