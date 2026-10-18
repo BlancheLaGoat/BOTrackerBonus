@@ -70,6 +70,11 @@ class AppState
     public List<int>        Bo2DogRoundHistory { get; set; } = [];
     public int?             CurrentBo2MobRound { get; set; }
     public List<int>        Bo2MobRoundHistory { get; set; } = [];
+    /// <summary>Nombre total de fois où chaque "pas" (+4, +5, +6…) a été utilisé pour
+    /// avancer la manche spéciale — clé = le pas, valeur = le nombre de fois utilisé.</summary>
+    public Dictionary<int, int> DogStepCounts     { get; set; } = [];
+    public Dictionary<int, int> Bo2DogStepCounts  { get; set; } = [];
+    public Dictionary<int, int> Bo2MobStepCounts  { get; set; } = [];
     public int?             CurrentBo2PanzerRound { get; set; }
     public List<int>        Bo2PanzerRoundHistory { get; set; } = [];
     public List<int>        Bo2Tank1Rounds { get; set; } = [];
@@ -228,18 +233,23 @@ public partial class MainWindow : Window
     // ----------------------------------------------------------------
     private int?       _currentDogRound = null;
     private List<int>  _dogRoundHistory = [];
+    /// <summary>Compteur total "+4 utilisé X fois / +5 utilisé X fois", jamais réinitialisé
+    /// par un simple changement de manche courante — seulement par le bouton Reset.</summary>
+    private Dictionary<int, int> _dogStepCounts = [];
 
     // ----------------------------------------------------------------
     //  ÉTAT — MANCHES SPÉCIALES (BO2, Die Rise uniquement)
     // ----------------------------------------------------------------
     private int?       _currentBo2DogRound = null;
     private List<int>  _bo2DogRoundHistory = [];
+    private Dictionary<int, int> _bo2DogStepCounts = [];
 
     // ----------------------------------------------------------------
     //  ÉTAT — MANCHES SPÉCIALES (BO2, Mob of the Dead uniquement, +4/+5/+6)
     // ----------------------------------------------------------------
     private int?       _currentBo2MobRound = null;
     private List<int>  _bo2MobRoundHistory = [];
+    private Dictionary<int, int> _bo2MobStepCounts = [];
 
     // ----------------------------------------------------------------
     //  ÉTAT — MANCHES SPÉCIALES (BO2, Origins uniquement, +4/+5, sans Twitch)
@@ -936,10 +946,13 @@ public partial class MainWindow : Window
         CycleCount       = _cycleCount,
         CurrentDogRound  = _currentDogRound,
         DogRoundHistory  = [.._dogRoundHistory],
+        DogStepCounts    = new(_dogStepCounts),
         CurrentBo2DogRound = _currentBo2DogRound,
         Bo2DogRoundHistory = [.._bo2DogRoundHistory],
+        Bo2DogStepCounts = new(_bo2DogStepCounts),
         CurrentBo2MobRound = _currentBo2MobRound,
         Bo2MobRoundHistory = [.._bo2MobRoundHistory],
+        Bo2MobStepCounts = new(_bo2MobStepCounts),
         CurrentBo2PanzerRound = _currentBo2PanzerRound,
         Bo2PanzerRoundHistory = [.._bo2PanzerRoundHistory],
         Bo2Tank1Rounds = [.._bo2Tank1Rounds],
@@ -1001,6 +1014,7 @@ public partial class MainWindow : Window
             {
                 _currentDogRound = state.CurrentDogRound;
                 _dogRoundHistory  = state.DogRoundHistory;
+                _dogStepCounts    = state.DogStepCounts;
                 UpdateDogRoundDisplay();
                 RenderDogHistory();
                 _dogRoundsVersion = state.DogRoundsVersion;
@@ -1011,6 +1025,7 @@ public partial class MainWindow : Window
             {
                 _currentBo2DogRound = state.CurrentBo2DogRound;
                 _bo2DogRoundHistory  = state.Bo2DogRoundHistory;
+                _bo2DogStepCounts    = state.Bo2DogStepCounts;
                 UpdateBo2DogRoundDisplay();
                 RenderBo2DogHistory();
                 _bo2DogRoundsVersion = state.Bo2DogRoundsVersion;
@@ -1021,6 +1036,7 @@ public partial class MainWindow : Window
             {
                 _currentBo2MobRound = state.CurrentBo2MobRound;
                 _bo2MobRoundHistory  = state.Bo2MobRoundHistory;
+                _bo2MobStepCounts    = state.Bo2MobStepCounts;
                 UpdateBo2MobRoundDisplay();
                 RenderBo2MobHistory();
                 _bo2MobRoundsVersion = state.Bo2MobRoundsVersion;
@@ -1416,16 +1432,19 @@ public partial class MainWindow : Window
 
             _currentDogRound = state.CurrentDogRound;
             _dogRoundHistory  = state.DogRoundHistory;
+            _dogStepCounts    = state.DogStepCounts;
             UpdateDogRoundDisplay();
             RenderDogHistory();
 
             _currentBo2DogRound = state.CurrentBo2DogRound;
             _bo2DogRoundHistory  = state.Bo2DogRoundHistory;
+            _bo2DogStepCounts    = state.Bo2DogStepCounts;
             UpdateBo2DogRoundDisplay();
             RenderBo2DogHistory();
 
             _currentBo2MobRound = state.CurrentBo2MobRound;
             _bo2MobRoundHistory  = state.Bo2MobRoundHistory;
+            _bo2MobStepCounts    = state.Bo2MobStepCounts;
             UpdateBo2MobRoundDisplay();
             RenderBo2MobHistory();
 
@@ -1865,6 +1884,7 @@ public partial class MainWindow : Window
     {
         _currentDogRound = null;
         _dogRoundHistory  = [];
+        _dogStepCounts    = [];
         _dogRoundsVersion++;
         DogRoundInput.Clear();
         UpdateDogRoundDisplay();
@@ -1883,6 +1903,7 @@ public partial class MainWindow : Window
             int next = current + step;
             _currentDogRound = next;
             if (!_dogRoundHistory.Contains(next)) _dogRoundHistory.Insert(0, next);
+            _dogStepCounts[step] = _dogStepCounts.GetValueOrDefault(step) + 1;
             _dogRoundsVersion++;
             UpdateDogRoundDisplay();
             RenderDogHistory();
@@ -1987,6 +2008,7 @@ public partial class MainWindow : Window
     {
         _currentBo2DogRound = null;
         _bo2DogRoundHistory  = [];
+        _bo2DogStepCounts    = [];
         _bo2DogRoundsVersion++;
         Bo2DogRoundInput.Clear();
         UpdateBo2DogRoundDisplay();
@@ -2005,6 +2027,7 @@ public partial class MainWindow : Window
             int next = current + step;
             _currentBo2DogRound = next;
             if (!_bo2DogRoundHistory.Contains(next)) _bo2DogRoundHistory.Insert(0, next);
+            _bo2DogStepCounts[step] = _bo2DogStepCounts.GetValueOrDefault(step) + 1;
             _bo2DogRoundsVersion++;
             UpdateBo2DogRoundDisplay();
             RenderBo2DogHistory();
@@ -2096,6 +2119,7 @@ public partial class MainWindow : Window
     {
         _currentBo2MobRound = null;
         _bo2MobRoundHistory  = [];
+        _bo2MobStepCounts    = [];
         _bo2MobRoundsVersion++;
         Bo2MobRoundInput.Clear();
         UpdateBo2MobRoundDisplay();
@@ -2115,6 +2139,7 @@ public partial class MainWindow : Window
             int next = current + step;
             _currentBo2MobRound = next;
             if (!_bo2MobRoundHistory.Contains(next)) _bo2MobRoundHistory.Insert(0, next);
+            _bo2MobStepCounts[step] = _bo2MobStepCounts.GetValueOrDefault(step) + 1;
             _bo2MobRoundsVersion++;
             UpdateBo2MobRoundDisplay();
             RenderBo2MobHistory();
@@ -2699,18 +2724,22 @@ public partial class MainWindow : Window
     internal List<int> DogRoundHistoryForOverlay => _dogRoundHistory;
     internal void      AdvanceDogRoundFromOverlay(int step) => AdvanceDogRound(step);
     internal string    FormatRoundForOverlay(int round) => FormatRound(round);
+    /// <summary>Nombre total de fois où le pas donné (+4, +5…) a été utilisé pour avancer la manche.</summary>
+    internal int       DogStepCountForOverlay(int step) => _dogStepCounts.GetValueOrDefault(step);
 
     // ── Manches spéciales Die Rise (BO2), pour l'overlay ──
     internal bool      IsBo2DieRiseMapActive          => _currentBo2Map?.Id == "die_rise";
     internal int?      CurrentBo2DogRoundForOverlay    => _currentBo2DogRound;
     internal List<int> Bo2DogRoundHistoryForOverlay    => _bo2DogRoundHistory;
     internal void      AdvanceBo2DogRoundFromOverlay(int step) => AdvanceBo2DogRound(step);
+    internal int       Bo2DogStepCountForOverlay(int step) => _bo2DogStepCounts.GetValueOrDefault(step);
 
     // ── Manches spéciales Mob of the Dead, pour l'overlay ──
     internal bool      IsBo2MobMapActive          => _currentBo2Map?.Id == "mob";
     internal int?      CurrentBo2MobRoundForOverlay => _currentBo2MobRound;
     internal List<int> Bo2MobRoundHistoryForOverlay => _bo2MobRoundHistory;
     internal void      AdvanceBo2MobRoundFromOverlay(int step) => AdvanceBo2MobRound(step);
+    internal int       Bo2MobStepCountForOverlay(int step) => _bo2MobStepCounts.GetValueOrDefault(step);
 
     /// <summary>Appelé par l'overlay quand on clique un bonus dedans : réutilise exactement la même logique que le tracker principal.</summary>
     internal void ToggleDropFromOverlay(string id)    => ToggleDrop(id);
@@ -2768,7 +2797,7 @@ public partial class MainWindow : Window
         if (result != MessageBoxResult.Yes) return;
 
         // ── BO1 ──
-        _currentDogRound = null; _dogRoundHistory = [];
+        _currentDogRound = null; _dogRoundHistory = []; _dogStepCounts = [];
         DogRoundInput.Clear(); UpdateDogRoundDisplay(); RenderDogHistory();
 
         _selected = []; _clickOrder = []; _cycleHistory = []; _cycleCount = 0;
@@ -2781,10 +2810,10 @@ public partial class MainWindow : Window
         _bo2Selected = []; _bo2ClickOrder = []; _bo2CycleHistory = []; _bo2CycleCount = 0;
         if (_currentBo2Map != null) { _currentBo2Drops = _currentBo2Map.Drops.Where(d => !_bo2DisabledIds.Contains(d.Id)).ToList(); RenderBo2Drops(); RenderBo2History(); }
 
-        _currentBo2DogRound = null; _bo2DogRoundHistory = [];
+        _currentBo2DogRound = null; _bo2DogRoundHistory = []; _bo2DogStepCounts = [];
         Bo2DogRoundInput.Clear(); UpdateBo2DogRoundDisplay(); RenderBo2DogHistory();
 
-        _currentBo2MobRound = null; _bo2MobRoundHistory = [];
+        _currentBo2MobRound = null; _bo2MobRoundHistory = []; _bo2MobStepCounts = [];
         Bo2MobRoundInput.Clear(); UpdateBo2MobRoundDisplay(); RenderBo2MobHistory();
 
         _currentBo2PanzerRound = null; _bo2PanzerRoundHistory = [];

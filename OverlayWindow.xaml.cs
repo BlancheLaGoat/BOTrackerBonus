@@ -331,7 +331,8 @@ namespace BO1Tracker
                 current: _owner.CurrentDogRoundForOverlay,
                 steps: [4, 5],
                 formatRound: r => _owner.FormatRoundForOverlay(r),
-                onAdvance: step => _owner.AdvanceDogRoundFromOverlay(step));
+                onAdvance: step => _owner.AdvanceDogRoundFromOverlay(step),
+                getStepCount: step => _owner.DogStepCountForOverlay(step));
         }
 
         /// <summary>Section "manche spéciale" pour l'onglet BO2 : Die Rise (+4/+5) ou Mob of the Dead (+3/+4/+5)
@@ -347,7 +348,8 @@ namespace BO1Tracker
                     current: _owner.CurrentBo2DogRoundForOverlay,
                     steps: [4, 5],
                     formatRound: r => _owner.FormatRoundForOverlay(r),
-                    onAdvance: step => _owner.AdvanceBo2DogRoundFromOverlay(step));
+                    onAdvance: step => _owner.AdvanceBo2DogRoundFromOverlay(step),
+                    getStepCount: step => _owner.Bo2DogStepCountForOverlay(step));
             }
             else if (_owner.IsBo2MobMapActive)
             {
@@ -356,11 +358,12 @@ namespace BO1Tracker
                     current: _owner.CurrentBo2MobRoundForOverlay,
                     steps: [4, 5, 6],
                     formatRound: r => $"{r}",
-                    onAdvance: step => _owner.AdvanceBo2MobRoundFromOverlay(step));
+                    onAdvance: step => _owner.AdvanceBo2MobRoundFromOverlay(step),
+                    getStepCount: step => _owner.Bo2MobStepCountForOverlay(step));
             }
         }
 
-        private void BuildRoundSection(string title, int? current, int[] steps, Func<int, string> formatRound, Action<int> onAdvance)
+        private void BuildRoundSection(string title, int? current, int[] steps, Func<int, string> formatRound, Action<int> onAdvance, Func<int, int> getStepCount)
         {
             RoundSectionPanel.Visibility = Visibility.Visible;
 
@@ -375,6 +378,13 @@ namespace BO1Tracker
                 Text = current.HasValue ? formatRound(current.Value) : "—",
                 FontFamily = new FontFamily("Consolas"), FontSize = 22, FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(ColAccentLight),
+            });
+            // Total de fois où chaque pas a été utilisé : "4 Rounders : 3 | 5 Rounders : 1".
+            currentBlock.Children.Add(new TextBlock
+            {
+                Text = string.Join("  |  ", steps.Select(s => $"{s} Rounders : {getStepCount(s)}")),
+                FontFamily = new FontFamily("Consolas"), FontSize = 10,
+                Foreground = new SolidColorBrush(ColTextSecond), Margin = new Thickness(0, 4, 0, 0),
             });
             RoundSectionPanel.Children.Add(currentBlock);
 
