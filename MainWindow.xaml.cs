@@ -323,8 +323,10 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Envoie la commande avec TOUT l'historique de manches donné dans le chat Twitch
-    /// (réutilisé aussi bien pour les manches spéciales BO1 que pour Die Rise en BO2).</summary>
-    private void SendTwitchRoundCommand(List<int> history)
+    /// (réutilisé aussi bien pour les manches spéciales BO1 que pour Die Rise/Mob en BO2).
+    /// <paramref name="stepCounts"/> (optionnel) ajoute en fin de message le total de fois où
+    /// chaque pas (+4, +5, +6…) a été utilisé, ex : "(4 Rounders : 3 | 5 Rounders : 1)".</summary>
+    private void SendTwitchRoundCommand(List<int> history, Dictionary<int, int>? stepCounts = null)
     {
         if (!_twitchConfig.TwitchAutoSend) return;
         if (string.IsNullOrWhiteSpace(_twitchConfig.TwitchUserId) || string.IsNullOrWhiteSpace(_twitchConfig.TwitchClientId))
@@ -340,6 +342,12 @@ public partial class MainWindow : Window
         string message;
         try { message = string.Format(_twitchConfig.TwitchCommandTemplate, roundsList); }
         catch { message = $"!dogs {roundsList}"; }
+
+        if (stepCounts is { Count: > 0 })
+        {
+            string tally = string.Join(" | ", stepCounts.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} Rounders : {kv.Value}"));
+            message += $" ({tally})";
+        }
 
         _ = Task.Run(async () =>
         {
@@ -407,7 +415,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(trigger)) return;
 
         if (string.Equals(text.Trim(), trigger, StringComparison.OrdinalIgnoreCase))
-            SendTwitchRoundCommand(_dogRoundHistory);
+            SendTwitchRoundCommand(_dogRoundHistory, _dogStepCounts);
     }
 
     private void TwitchConnectButton_Click(object sender, RoutedEventArgs e)
@@ -1876,7 +1884,7 @@ public partial class MainWindow : Window
         UpdateDogRoundDisplay();
         RenderDogHistory();
         SaveState();
-        SendTwitchRoundCommand(_dogRoundHistory);
+        SendTwitchRoundCommand(_dogRoundHistory, _dogStepCounts);
         RefreshOverlayIfOpen();
     }
 
@@ -1908,7 +1916,7 @@ public partial class MainWindow : Window
             UpdateDogRoundDisplay();
             RenderDogHistory();
             SaveState();
-            SendTwitchRoundCommand(_dogRoundHistory);
+            SendTwitchRoundCommand(_dogRoundHistory, _dogStepCounts);
             RefreshOverlayIfOpen();
         }
     }
@@ -2000,7 +2008,7 @@ public partial class MainWindow : Window
         UpdateBo2DogRoundDisplay();
         RenderBo2DogHistory();
         SaveState();
-        SendTwitchRoundCommand(_bo2DogRoundHistory);
+        SendTwitchRoundCommand(_bo2DogRoundHistory, _bo2DogStepCounts);
         RefreshOverlayIfOpen();
     }
 
@@ -2032,7 +2040,7 @@ public partial class MainWindow : Window
             UpdateBo2DogRoundDisplay();
             RenderBo2DogHistory();
             SaveState();
-            SendTwitchRoundCommand(_bo2DogRoundHistory);
+            SendTwitchRoundCommand(_bo2DogRoundHistory, _bo2DogStepCounts);
             RefreshOverlayIfOpen();
         }
     }
@@ -2111,7 +2119,7 @@ public partial class MainWindow : Window
         UpdateBo2MobRoundDisplay();
         RenderBo2MobHistory();
         SaveState();
-        SendTwitchRoundCommand(_bo2MobRoundHistory);
+        SendTwitchRoundCommand(_bo2MobRoundHistory, _bo2MobStepCounts);
         RefreshOverlayIfOpen();
     }
 
@@ -2144,7 +2152,7 @@ public partial class MainWindow : Window
             UpdateBo2MobRoundDisplay();
             RenderBo2MobHistory();
             SaveState();
-            SendTwitchRoundCommand(_bo2MobRoundHistory);
+            SendTwitchRoundCommand(_bo2MobRoundHistory, _bo2MobStepCounts);
             RefreshOverlayIfOpen();
         }
     }
