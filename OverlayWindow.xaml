@@ -62,7 +62,7 @@
     </Window.Resources>
 
     <Grid x:Name="RootGrid" Background="Transparent">
-        <StackPanel>
+        <StackPanel x:Name="RootStackPanel">
 
             <!-- Barre de contrôle (toujours visible, seule zone de déplacement de la fenêtre).
                  Fond quasi invisible (alpha=1) et non pas totalement Transparent : sous Windows,
@@ -86,6 +86,8 @@
                                 ToolTip="Activer/désactiver Carpenter, Fire Sale, Death Machine, etc. directement depuis l'overlay"/>
                         <Button x:Name="OpaqueBtn" Content="OPAQUE" Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="OpaqueButton_Click"
                                 ToolTip="Bascule entre fond totalement transparent (pour OBS Window Capture) et fond plein (pour utiliser la fenêtre normalement, sans OBS)"/>
+                        <Button x:Name="ScaleBtn" Content="TAILLE 100%" Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="ScaleButton_Click"
+                                ToolTip="Réduit la taille de tout l'overlay (cases, images, texte) sans changer la disposition"/>
                         <Button x:Name="TopBtn"  Content="FOND"   Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="TopButton_Click"/>
                         <Button x:Name="LockBtn" Content="LOCK"   Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="LockButton_Click"/>
                         <Button                  Content="✕"      Style="{StaticResource CtrlBtn}" Foreground="#FF6B6B" Margin="0,0,4,0" Click="CloseButton_Click"/>

@@ -27,6 +27,12 @@ namespace BO1Tracker
         private bool _showZombiesHordes = true;
         private readonly MainWindow? _owner;
 
+        // ── Taille globale de l'overlay (cases, images, texte) ────────────
+        // Un LayoutTransform sur tout le contenu : tout rétrécit ensemble, sans
+        // jamais changer l'ordre ni la disposition choisis par l'utilisateur.
+        private static readonly double[] ScaleLevels = [1.0, 0.85, 0.7, 0.55];
+        private int _scaleIndex = 0;
+
         public OverlayMode Mode { get; private set; }
 
         // ── État BO1/BO2 Bonus ───────────────────────────────────────────
@@ -65,6 +71,7 @@ namespace BO1Tracker
             UpdateModeButtons();
             ReadAndRefresh();
             ApplyOpaqueState(startOpaque: true); // ouverture en opaque par défaut
+            ApplyScale();
 
             var dir = Path.GetDirectoryName(SavePath)!;
             Directory.CreateDirectory(dir);
@@ -322,7 +329,8 @@ namespace BO1Tracker
             var card = new Border
             {
                 Child           = stack,
-                MinWidth        = 96,
+                Width           = 120, // largeur FIXE (pas MinWidth) : toutes les cases ont exactement la même taille,
+                                        // peu importe la longueur du libellé (ex. "NUKE" vs "DOUBLE POINTS").
                 Padding         = new Thickness(14, 12, 14, 12),
                 CornerRadius    = new CornerRadius(10),
                 BorderThickness = new Thickness(2),
@@ -586,7 +594,8 @@ namespace BO1Tracker
             var card = new Border
             {
                 Child           = stack,
-                MinWidth        = 96,
+                Width           = 120, // largeur FIXE (pas MinWidth) : toutes les cases ont exactement la même taille,
+                                        // peu importe la longueur du libellé (ex. "NUKE" vs "DOUBLE POINTS").
                 Padding         = new Thickness(14, 12, 14, 12),
                 CornerRadius    = new CornerRadius(10),
                 BorderThickness = new Thickness(2),
@@ -671,7 +680,8 @@ namespace BO1Tracker
             var card = new Border
             {
                 Child           = stack,
-                MinWidth        = 96,
+                Width           = 120, // largeur FIXE (pas MinWidth) : toutes les cases ont exactement la même taille,
+                                        // peu importe la longueur du libellé (ex. "NUKE" vs "DOUBLE POINTS").
                 Padding         = new Thickness(14, 12, 14, 12),
                 CornerRadius    = new CornerRadius(10),
                 BorderThickness = new Thickness(2),
@@ -740,6 +750,22 @@ namespace BO1Tracker
         {
             Topmost = !Topmost;
             TopBtn.Content = Topmost ? "FOND" : "DEVANT";
+        }
+
+        /// <summary>Rétrécit tout l'overlay (cases, images, texte) d'un cran à chaque clic, en boucle
+        /// sur quelques paliers. Un seul LayoutTransform sur tout le contenu : la disposition et l'ordre
+        /// choisis (cartes, manches, zombies) ne bougent jamais, tout rapetisse simplement ensemble.</summary>
+        private void ScaleButton_Click(object sender, RoutedEventArgs e)
+        {
+            _scaleIndex = (_scaleIndex + 1) % ScaleLevels.Length;
+            ApplyScale();
+        }
+
+        private void ApplyScale()
+        {
+            double scale = ScaleLevels[_scaleIndex];
+            RootStackPanel.LayoutTransform = scale == 1.0 ? Transform.Identity : new ScaleTransform(scale, scale);
+            ScaleBtn.Content = $"TAILLE {(int)Math.Round(scale * 100)}%";
         }
 
         private bool _opaqueBackground = false;
