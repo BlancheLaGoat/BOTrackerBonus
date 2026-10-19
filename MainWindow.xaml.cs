@@ -75,6 +75,11 @@ class AppState
     public Dictionary<int, int> DogStepCounts     { get; set; } = [];
     public Dictionary<int, int> Bo2DogStepCounts  { get; set; } = [];
     public Dictionary<int, int> Bo2MobStepCounts  { get; set; } = [];
+    /// <summary>Onglet "Zombies par manche" : manche + nombre de joueurs choisis manuellement,
+    /// avec version dédiée (comme les manches spéciales) pour la synchro multi.</summary>
+    public long             ZombiesVersion         { get; set; }
+    public int              CurrentZombiesRound    { get; set; } = 1;
+    public int              CurrentZombiesPlayers  { get; set; } = 2;
     public int?             CurrentBo2PanzerRound { get; set; }
     public List<int>        Bo2PanzerRoundHistory { get; set; } = [];
     public List<int>        Bo2Tank1Rounds { get; set; } = [];
@@ -252,6 +257,13 @@ public partial class MainWindow : Window
     private Dictionary<int, int> _bo2MobStepCounts = [];
 
     // ----------------------------------------------------------------
+    //  ÉTAT — ZOMBIES PAR MANCHE (manche + joueurs choisis manuellement)
+    // ----------------------------------------------------------------
+    private int _zombiesRound   = 1;
+    private int _zombiesPlayers = 2;
+    private long _zombiesVersion = 0;
+
+    // ----------------------------------------------------------------
     //  ÉTAT — MANCHES SPÉCIALES (BO2, Origins uniquement, +4/+5, sans Twitch)
     // ----------------------------------------------------------------
     private int?       _currentBo2PanzerRound = null;
@@ -295,7 +307,7 @@ public partial class MainWindow : Window
     // c'est l'identifiant du LOGICIEL, pas d'un compte. Tous les
     // utilisateurs de l'app partagent ce même Client ID, mais chacun
     // se connecte ensuite avec SON PROPRE compte Twitch.
-    private const string TwitchClientId = "7rqkqvjo28olg68jkf0c5ss01r9pbs";
+    private const string TwitchClientId = "COLLE_TON_CLIENT_ID_ICI";
 
     private TwitchConfig _twitchConfig = new();
     private string?      _twitchAccessToken = null;
@@ -961,6 +973,9 @@ public partial class MainWindow : Window
         CurrentBo2MobRound = _currentBo2MobRound,
         Bo2MobRoundHistory = [.._bo2MobRoundHistory],
         Bo2MobStepCounts = new(_bo2MobStepCounts),
+        ZombiesVersion        = _zombiesVersion,
+        CurrentZombiesRound   = _zombiesRound,
+        CurrentZombiesPlayers = _zombiesPlayers,
         CurrentBo2PanzerRound = _currentBo2PanzerRound,
         Bo2PanzerRoundHistory = [.._bo2PanzerRoundHistory],
         Bo2Tank1Rounds = [.._bo2Tank1Rounds],
@@ -1048,6 +1063,15 @@ public partial class MainWindow : Window
                 UpdateBo2MobRoundDisplay();
                 RenderBo2MobHistory();
                 _bo2MobRoundsVersion = state.Bo2MobRoundsVersion;
+            }
+
+            // --- zombies par manche ---
+            if (state.ZombiesVersion >= _zombiesVersion)
+            {
+                _zombiesRound   = state.CurrentZombiesRound;
+                _zombiesPlayers = state.CurrentZombiesPlayers;
+                UpdateZombiesDisplay();
+                _zombiesVersion = state.ZombiesVersion;
             }
 
             // --- manches spéciales BO2 (Origins, Panzers) ---
@@ -1456,6 +1480,11 @@ public partial class MainWindow : Window
             UpdateBo2MobRoundDisplay();
             RenderBo2MobHistory();
 
+            _zombiesRound   = state.CurrentZombiesRound;
+            _zombiesPlayers = state.CurrentZombiesPlayers;
+            _zombiesVersion = state.ZombiesVersion;
+            UpdateZombiesDisplay();
+
             _currentBo2PanzerRound = state.CurrentBo2PanzerRound;
             _bo2PanzerRoundHistory  = state.Bo2PanzerRoundHistory;
             UpdateBo2PanzerRoundDisplay();
@@ -1646,13 +1675,11 @@ public partial class MainWindow : Window
         LoadState();
         // Zombie Blood is exclusive to Origins and never disableable — purge any stale save data
         _bo2DisabledIds.Remove("zombie_blood");
+        // S'assure que le compte de zombies initial est affiché même sans sauvegarde existante.
+        UpdateZombiesDisplay();
 
         LoadTwitchConfig();
         InitTwitchUiFromConfig();
-
-        // Vérification de mise à jour en arrière-plan (silencieuse si rien
-        // de nouveau, ou si pas de connexion — ne bloque jamais le démarrage).
-        _ = Task.Run(() => UpdateChecker.CheckForUpdatesAsync());
     }
 
     private void InitTwitchUiFromConfig()
@@ -1703,7 +1730,8 @@ public partial class MainWindow : Window
             (Bo2TabButton,   "bo2"),
             (MultiTabButton, "multi"),
             (TwitchTabButton,"twitch"),
-            (ResetTrackerTabButton,"resettracker") })
+            (ResetTrackerTabButton,"resettracker"),
+            (ZombiesTabButton,"zombies") })
         {
             bool active = name == tab;
             btn.IsChecked  = active;
@@ -1717,13 +1745,98 @@ public partial class MainWindow : Window
         MultiPanel.Visibility  = tab == "multi"  ? Visibility.Visible : Visibility.Collapsed;
         TwitchPanel.Visibility = tab == "twitch" ? Visibility.Visible : Visibility.Collapsed;
         ResetTrackerPanel.Visibility = tab == "resettracker" ? Visibility.Visible : Visibility.Collapsed;
+        ZombiesPanel.Visibility = tab == "zombies" ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void Bo1TabButton_Click(object sender, RoutedEventArgs e)    => SetActiveTab("bo1");
     private void Bo2TabButton_Click(object sender, RoutedEventArgs e)    => SetActiveTab("bo2");
     private void MultiTabButton_Click(object sender, RoutedEventArgs e)  => SetActiveTab("multi");
     private void TwitchTabButton_Click(object sender, RoutedEventArgs e) => SetActiveTab("twitch");
+    private void ZombiesTabButton_Click(object sender, RoutedEventArgs e) => SetActiveTab("zombies");
     private void ResetTrackerTabButton_Click(object sender, RoutedEventArgs e) => SetActiveTab("resettracker");
+
+    // ================================================================
+    //  ZOMBIES PAR MANCHE (manche + nombre de joueurs choisis manuellement)
+    // ================================================================
+    private void ZombiesPlayersBtn_Click(object sender, RoutedEventArgs e)
+    {
+        int players = sender switch
+        {
+            var s when s == ZombiesPlayers1Btn => 1,
+            var s when s == ZombiesPlayers2Btn => 2,
+            var s when s == ZombiesPlayers3Btn => 3,
+            var s when s == ZombiesPlayers4Btn => 4,
+            _ => _zombiesPlayers,
+        };
+        SetZombiesPlayers(players);
+    }
+
+    private void SetZombiesPlayers(int players)
+    {
+        _zombiesPlayers = Math.Clamp(players, 1, 4);
+        _zombiesVersion++;
+        UpdateZombiesDisplay();
+        SaveState();
+        RefreshOverlayIfOpen();
+    }
+
+    private void ZombiesRoundMinusBtn_Click(object sender, RoutedEventArgs e) => AdvanceZombiesRound(-1);
+    private void ZombiesRoundPlusBtn_Click(object sender, RoutedEventArgs e)  => AdvanceZombiesRound(1);
+
+    private void ZombiesRoundInput_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        => e.Handled = !e.Text.All(char.IsDigit);
+
+    private void ZombiesSetRoundButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(ZombiesRoundInput.Text, out int round) || round <= 0)
+        {
+            MessageBox.Show("Veuillez entrer un numéro de manche valide (nombre entier positif).",
+                            "Manche invalide", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        SetZombiesRound(round);
+        ZombiesRoundInput.Clear();
+    }
+
+    private void ZombiesRoundResetBtn_Click(object sender, RoutedEventArgs e) => SetZombiesRound(1);
+
+    private void AdvanceZombiesRound(int delta) => SetZombiesRound(_zombiesRound + delta);
+
+    private void SetZombiesRound(int round)
+    {
+        _zombiesRound = Math.Max(1, round);
+        _zombiesVersion++;
+        UpdateZombiesDisplay();
+        SaveState();
+        RefreshOverlayIfOpen();
+    }
+
+    private void UpdateZombiesDisplay()
+    {
+        ZombiesRoundText.Text  = $"{_zombiesRound}";
+        ZombiesCountText.Text  = $"{ZombiesPerRound.GetCount(_zombiesRound, _zombiesPlayers)}";
+        ZombiesHordesText.Text = $"{ZombiesPerRound.GetHordes(_zombiesRound, _zombiesPlayers):0.##}";
+
+        foreach (var (btn, n) in new[] {
+            (ZombiesPlayers1Btn, 1), (ZombiesPlayers2Btn, 2),
+            (ZombiesPlayers3Btn, 3), (ZombiesPlayers4Btn, 4) })
+        {
+            bool active = n == _zombiesPlayers;
+            btn.IsChecked   = active;
+            btn.Background  = active ? Brush("BrushAccentDark") : Brush("BrushBgCard");
+            btn.Foreground  = active ? Brush("BrushAccentLight") : Brush("BrushTextSecondary");
+            btn.BorderBrush = active ? Brush("BrushAccent") : Brush("BrushBorder");
+        }
+    }
+
+    // ── Pour l'overlay ──
+    internal int    CurrentZombiesRoundForOverlay   => _zombiesRound;
+    internal int    CurrentZombiesPlayersForOverlay => _zombiesPlayers;
+    internal int    ZombiesCountForOverlay          => ZombiesPerRound.GetCount(_zombiesRound, _zombiesPlayers);
+    internal double ZombiesHordesForOverlay         => ZombiesPerRound.GetHordes(_zombiesRound, _zombiesPlayers);
+    internal void   AdvanceZombiesRoundFromOverlay(int delta) => AdvanceZombiesRound(delta);
+    internal void   SetZombiesRoundFromOverlay(int round)     => SetZombiesRound(round);
+    internal void   SetZombiesPlayersFromOverlay(int players) => SetZombiesPlayers(players);
 
     // ================================================================
     //  BOUTONS DE MAPS
@@ -1961,9 +2074,9 @@ public partial class MainWindow : Window
             bool isCurrent = (_currentDogRound == round);
             var badge = new Border
             {
-                Background      = isCurrent ? Brush("BrushAccentDark") : Brush("BrushBgCard"),
-                BorderBrush     = isCurrent ? Brush("BrushAccent")     : Brush("BrushBorder"),
-                BorderThickness = new Thickness(isCurrent ? 2 : 1),
+                Background      = Brush("BrushBgCard"),
+                BorderBrush     = Brush("BrushBorder"),
+                BorderThickness = new Thickness(1),
                 CornerRadius    = new CornerRadius(6),
                 Padding         = new Thickness(14, 6, 14, 6),
                 Margin          = new Thickness(0, 0, 8, 8),
@@ -2071,9 +2184,9 @@ public partial class MainWindow : Window
             bool isCurrent = (_currentBo2DogRound == round);
             var badge = new Border
             {
-                Background      = isCurrent ? Brush("BrushAccentDark") : Brush("BrushBgCard"),
-                BorderBrush     = isCurrent ? Brush("BrushAccent")     : Brush("BrushBorder"),
-                BorderThickness = new Thickness(isCurrent ? 2 : 1),
+                Background      = Brush("BrushBgCard"),
+                BorderBrush     = Brush("BrushBorder"),
+                BorderThickness = new Thickness(1),
                 CornerRadius    = new CornerRadius(6),
                 Padding         = new Thickness(14, 6, 14, 6),
                 Margin          = new Thickness(0, 0, 8, 8),
@@ -2184,9 +2297,9 @@ public partial class MainWindow : Window
             bool isCurrent = (_currentBo2MobRound == round);
             var badge = new Border
             {
-                Background      = isCurrent ? Brush("BrushAccentDark") : Brush("BrushBgCard"),
-                BorderBrush     = isCurrent ? Brush("BrushAccent")     : Brush("BrushBorder"),
-                BorderThickness = new Thickness(isCurrent ? 2 : 1),
+                Background      = Brush("BrushBgCard"),
+                BorderBrush     = Brush("BrushBorder"),
+                BorderThickness = new Thickness(1),
                 CornerRadius    = new CornerRadius(6),
                 Padding         = new Thickness(14, 6, 14, 6),
                 Margin          = new Thickness(0, 0, 8, 8),
@@ -2290,9 +2403,9 @@ public partial class MainWindow : Window
             bool isCurrent = (_currentBo2PanzerRound == round);
             var badge = new Border
             {
-                Background      = isCurrent ? Brush("BrushAccentDark") : Brush("BrushBgCard"),
-                BorderBrush     = isCurrent ? Brush("BrushAccent")     : Brush("BrushBorder"),
-                BorderThickness = new Thickness(isCurrent ? 2 : 1),
+                Background      = Brush("BrushBgCard"),
+                BorderBrush     = Brush("BrushBorder"),
+                BorderThickness = new Thickness(1),
                 CornerRadius    = new CornerRadius(6),
                 Padding         = new Thickness(14, 6, 14, 6),
                 Margin          = new Thickness(0, 0, 8, 8),
@@ -2841,25 +2954,6 @@ public partial class MainWindow : Window
     // ================================================================
     //  EXPORT NOTEPAD
     // ================================================================
-    private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
-    {
-        var btn = (Button)sender;
-        string original = btn.Content.ToString() ?? "";
-        btn.IsEnabled = false;
-        btn.Content   = "VÉRIFICATION...";
-        try
-        {
-            await UpdateChecker.CheckForUpdatesAsync(manual: true);
-        }
-        finally
-        {
-            // Si une mise à jour a été acceptée, l'appli s'est déjà fermée
-            // (Application.Shutdown) et ce code ne s'exécute jamais.
-            btn.IsEnabled = true;
-            btn.Content   = original;
-        }
-    }
-
     private void ExportTxtButton_Click(object sender, RoutedEventArgs e)
     {
         var sb  = new StringBuilder();

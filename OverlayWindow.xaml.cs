@@ -23,6 +23,8 @@ namespace BO1Tracker
 
         private FileSystemWatcher? _watcher;
         private bool _locked = false;
+        private bool _showSpecialRounds = true;
+        private bool _showZombiesHordes = true;
         private readonly MainWindow? _owner;
 
         public OverlayMode Mode { get; private set; }
@@ -145,28 +147,48 @@ namespace BO1Tracker
             CardsPanel.Children.Clear();
             RoundSectionPanel.Children.Clear();
             RoundSectionPanel.Visibility = Visibility.Collapsed;
+            ZombiesSectionPanel.Children.Clear();
+            ZombiesSectionPanel.Visibility = Visibility.Collapsed;
 
             switch (Mode)
             {
                 case OverlayMode.Bo1Bonus:
                     if (_owner != null) BuildBonusCardsLive(_owner.CurrentDropsForOverlay, _owner.SelectedForOverlay, _owner.ClickOrderForOverlay, isBo2: false);
                     else                 BuildBonusCards(_bo1Clicks);
-                    BuildBo1RoundSection();
+                    if (_showSpecialRounds) BuildBo1RoundSection();
                     break;
                 case OverlayMode.Bo2Bonus:
                     if (_owner != null) BuildBonusCardsLive(_owner.CurrentBo2DropsForOverlay, _owner.Bo2SelectedForOverlay, _owner.Bo2ClickOrderForOverlay, isBo2: true);
                     else                 BuildBonusCards(_bo2Clicks);
-                    BuildBo2RoundSection();
+                    if (_showSpecialRounds) BuildBo2RoundSection();
                     break;
                 case OverlayMode.Box:
                     BuildBoxCards();
                     break;
             }
 
+            // Zombies par manche : indépendant de la map/du mode, affiché tant que le tracker est ouvert.
+            if (_showZombiesHordes) BuildZombiesSection();
+
             // Le bouton BONUS n'a de sens qu'en mode Bo1Bonus / Bo2Bonus (pas pour la boîte)
             BonusTypesBtn.Visibility = Mode == OverlayMode.Box ? Visibility.Collapsed : Visibility.Visible;
             if (Mode == OverlayMode.Box) BonusTypesPanel.Visibility = Visibility.Collapsed;
             if (BonusTypesPanel.Visibility == Visibility.Visible) BuildBonusTypesPanel();
+        }
+
+        // ── Afficher/masquer les manches spéciales et les hordes dans l'overlay ──
+        private void RoundsVisibilityButton_Click(object sender, RoutedEventArgs e)
+        {
+            _showSpecialRounds = !_showSpecialRounds;
+            RoundsVisibilityBtn.Content = _showSpecialRounds ? "MANCHES" : "MANCHES ✕";
+            RebuildCards();
+        }
+
+        private void HordesVisibilityButton_Click(object sender, RoutedEventArgs e)
+        {
+            _showZombiesHordes = !_showZombiesHordes;
+            HordesVisibilityBtn.Content = _showZombiesHordes ? "HORDES" : "HORDES ✕";
+            RebuildCards();
         }
 
         // ── Activer/désactiver les bonus optionnels (Carpenter, Fire Sale, ...) depuis l'overlay ──
@@ -379,13 +401,6 @@ namespace BO1Tracker
                 FontFamily = new FontFamily("Consolas"), FontSize = 22, FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(ColAccentLight),
             });
-            // Total de fois où chaque pas a été utilisé : "4 Rounders : 3 | 5 Rounders : 1".
-            currentBlock.Children.Add(new TextBlock
-            {
-                Text = string.Join("  |  ", steps.Select(s => $"{s} Rounders : {getStepCount(s)}")),
-                FontFamily = new FontFamily("Consolas"), FontSize = 10,
-                Foreground = new SolidColorBrush(ColTextSecond), Margin = new Thickness(0, 4, 0, 0),
-            });
             RoundSectionPanel.Children.Add(currentBlock);
 
             if (current.HasValue)
@@ -395,24 +410,17 @@ namespace BO1Tracker
 
         private Border MakeRoundStepBadge(int step, string nextRoundLabel, Action<int> onAdvance)
         {
-            var stack = new StackPanel { Orientation = Orientation.Horizontal };
-            stack.Children.Add(new TextBlock
-            {
-                Text = $"+{step} → ", FontFamily = new FontFamily("Consolas"), FontSize = 13,
-                Foreground = new SolidColorBrush(ColTextSecond), VerticalAlignment = VerticalAlignment.Center,
-            });
-            stack.Children.Add(new TextBlock
+            var label = new TextBlock
             {
                 Text = nextRoundLabel, FontFamily = new FontFamily("Consolas"), FontSize = 15, FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(ColAccentLight), VerticalAlignment = VerticalAlignment.Center,
-            });
+                Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center,
+            };
 
             var badge = new Border
             {
-                Child           = stack,
+                Child           = label,
                 Background      = new SolidColorBrush(ColAccentDark),
-                BorderBrush     = new SolidColorBrush(ColAccent),
-                BorderThickness = new Thickness(1),
+                BorderThickness = new Thickness(0),
                 CornerRadius    = new CornerRadius(6),
                 Padding         = new Thickness(12, 8, 12, 8),
                 Margin          = new Thickness(0, 0, 8, 0),
@@ -428,6 +436,87 @@ namespace BO1Tracker
             return badge;
         }
 
+        // ── Zombies par manche (indépendant de la map/du mode) ────────────
+        private void BuildZombiesSection()
+        {
+            if (_owner == null) return; // nécessite le tracker ouvert (lecture/écriture de son état)
+
+            ZombiesSectionPanel.Visibility = Visibility.Visible;
+
+            int round  = _owner.CurrentZombiesRoundForOverlay;
+            double hordes = _owner.ZombiesHordesForOverlay;
+
+            // Manche, modifiable directement : -1 / +1, ou en tapant un numéro dans le champ.
+            var roundRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
+            var roundControls = new StackPanel { Orientation = Orientation.Horizontal };
+            roundControls.Children.Add(MakeZombiesStepButton("−", () => { _owner.AdvanceZombiesRoundFromOverlay(-1); RebuildCards(); }));
+
+            var roundInput = new TextBox
+            {
+                Text = $"{round}",
+                FontFamily = new FontFamily("Consolas"), FontSize = 18, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(ColAccentLight), Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0), CaretBrush = new SolidColorBrush(ColAccentLight),
+                TextAlignment = TextAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
+                MinWidth = 48, Margin = new Thickness(8, 0, 8, 0),
+            };
+            void CommitRoundInput()
+            {
+                if (int.TryParse(roundInput.Text, out int newRound) && newRound > 0 && newRound != round)
+                {
+                    _owner.SetZombiesRoundFromOverlay(newRound);
+                    RebuildCards();
+                }
+                else
+                {
+                    roundInput.Text = $"{round}"; // valeur invalide ou inchangée : on réaffiche la manche actuelle
+                }
+            }
+            roundInput.PreviewTextInput += (_, e) => e.Handled = !e.Text.All(char.IsDigit);
+            roundInput.KeyDown += (_, e) =>
+            {
+                if (e.Key == Key.Enter) { CommitRoundInput(); e.Handled = true; }
+            };
+            roundInput.LostFocus += (_, _) => CommitRoundInput();
+            roundControls.Children.Add(roundInput);
+
+            roundControls.Children.Add(MakeZombiesStepButton("+", () => { _owner.AdvanceZombiesRoundFromOverlay(1); RebuildCards(); }));
+            roundRow.Children.Add(roundControls);
+            ZombiesSectionPanel.Children.Add(roundRow);
+
+            // Nombre de hordes à la manche + nombre de joueurs choisis dans l'appli.
+            var hordesBlock = new StackPanel { Orientation = Orientation.Vertical, VerticalAlignment = VerticalAlignment.Center };
+            hordesBlock.Children.Add(new TextBlock
+            {
+                Text = "HORDES", FontFamily = new FontFamily("Consolas"), FontSize = 10,
+                Foreground = new SolidColorBrush(ColTextSecond), Margin = new Thickness(0, 0, 0, 2),
+            });
+            hordesBlock.Children.Add(new TextBlock
+            {
+                Text = hordes.ToString("0.##"), FontFamily = new FontFamily("Consolas"), FontSize = 22, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(ColAccentLight),
+            });
+            ZombiesSectionPanel.Children.Add(hordesBlock);
+        }
+
+        private Border MakeZombiesStepButton(string label, Action onClick)
+        {
+            var btn = new Border
+            {
+                Child = new TextBlock
+                {
+                    Text = label, FontFamily = new FontFamily("Consolas"), FontSize = 15, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center,
+                },
+                Background      = new SolidColorBrush(ColAccentDark),
+                BorderThickness = new Thickness(0),
+                CornerRadius    = new CornerRadius(6),
+                Padding         = new Thickness(10, 4, 10, 4),
+                Cursor          = Cursors.Hand,
+            };
+            btn.MouseLeftButtonUp += (_, _) => onClick();
+            return btn;
+        }
 
         private void BuildBonusCards(List<(int Order, string Label, string ImagePath)> clicks)
         {

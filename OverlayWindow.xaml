@@ -78,6 +78,10 @@
                         <Button x:Name="ModeBoxBtn" Content="BOÎTE"     Style="{StaticResource ModeBtn}" Click="ModeBox_Click"/>
                     </StackPanel>
                     <StackPanel x:Name="HeaderRightControlsPanel" DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="RoundsVisibilityBtn" Content="MANCHES" Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="RoundsVisibilityButton_Click"
+                                ToolTip="Afficher/masquer les manches spéciales dans l'overlay"/>
+                        <Button x:Name="HordesVisibilityBtn" Content="HORDES" Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="HordesVisibilityButton_Click"
+                                ToolTip="Afficher/masquer les hordes dans l'overlay"/>
                         <Button x:Name="BonusTypesBtn" Content="BONUS" Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="BonusTypesButton_Click"
                                 ToolTip="Activer/désactiver Carpenter, Fire Sale, Death Machine, etc. directement depuis l'overlay"/>
                         <Button x:Name="OpaqueBtn" Content="OPAQUE" Style="{StaticResource CtrlBtn}" Margin="0,0,4,0" Click="OpaqueButton_Click"
@@ -106,6 +110,9 @@
 
                     <!-- Manches spéciales de la map active (BO1 dog rounds, Die Rise, Mob) -->
                     <StackPanel x:Name="RoundSectionPanel" Orientation="Horizontal" Margin="0,10,0,0" Visibility="Collapsed"/>
+
+                    <!-- Zombies par manche (nombre de joueurs + manche choisis manuellement) -->
+                    <StackPanel x:Name="ZombiesSectionPanel" Orientation="Horizontal" Margin="0,10,0,0" Visibility="Collapsed"/>
                 </StackPanel>
             </Border>
 

@@ -101,22 +101,22 @@
                                       BorderThickness="1"
                                       Cursor="Hand"
                                       Click="ResetTrackerTabButton_Click" />
+                        <ToggleButton x:Name="ZombiesTabButton"
+                                      Content="ZOMBIES"
+                                      IsChecked="False"
+                                      FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                                      Padding="14,5"
+                                      Margin="4,0,0,0"
+                                      Background="{StaticResource BrushBgCard}"
+                                      Foreground="{StaticResource BrushTextSecondary}"
+                                      BorderBrush="{StaticResource BrushBorder}"
+                                      BorderThickness="1"
+                                      Cursor="Hand"
+                                      Click="ZombiesTabButton_Click" />
                     </StackPanel>
                 </Border>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Button x:Name="CheckUpdateButton"
-                        Content="&#x1F504; VÉRIFIER MAJ"
-                        VerticalAlignment="Center"
-                        FontFamily="Consolas" FontSize="12" FontWeight="Bold"
-                        Padding="14,8"
-                        Margin="0,0,8,0"
-                        Background="{StaticResource BrushBgCard}"
-                        Foreground="{StaticResource BrushTextSecondary}"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="1"
-                        Cursor="Hand"
-                        Click="CheckUpdateButton_Click" />
                 <Button x:Name="ExportTxtButton"
                         Content="&#x1F4C4; ENREGISTRER"
                         VerticalAlignment="Center"
@@ -1340,6 +1340,104 @@
       </StackPanel>
     </ScrollViewer>
 
+    <!-- ══ CONTENU ZOMBIES PAR MANCHE ══ -->
+    <ScrollViewer x:Name="ZombiesPanel" Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+      <StackPanel Margin="24,20,24,20" MaxWidth="640" HorizontalAlignment="Left">
+
+        <TextBlock Text="ZOMBIES PAR MANCHE"
+                   FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                   Foreground="{StaticResource BrushTextPrimary}"
+                   Margin="0,0,0,4" />
+        <TextBlock Text="Nombre de zombies à tuer à la manche en cours, selon le nombre de joueurs. S'affiche aussi dans l'overlay OBS, en dessous des manches spéciales, et est modifiable directement depuis l'overlay."
+                   FontFamily="Consolas" FontSize="12"
+                   Foreground="{StaticResource BrushTextSecondary}"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,20" />
+
+        <TextBlock Text="NOMBRE DE JOUEURS" Style="{StaticResource SectionLabelStyle}" />
+        <Border Background="{StaticResource BrushBgCard}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="1" CornerRadius="6"
+                Padding="3" Margin="0,0,0,20"
+                HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal">
+                <ToggleButton x:Name="ZombiesPlayers1Btn" Content="1 JOUEUR" FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                              Padding="14,5" Background="{StaticResource BrushBgCard}" Foreground="{StaticResource BrushTextSecondary}"
+                              BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" Cursor="Hand"
+                              Click="ZombiesPlayersBtn_Click" />
+                <ToggleButton x:Name="ZombiesPlayers2Btn" Content="2 JOUEURS" FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                              Padding="14,5" Margin="4,0,0,0" Background="{StaticResource BrushBgCard}" Foreground="{StaticResource BrushTextSecondary}"
+                              BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" Cursor="Hand"
+                              Click="ZombiesPlayersBtn_Click" />
+                <ToggleButton x:Name="ZombiesPlayers3Btn" Content="3 JOUEURS" FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                              Padding="14,5" Margin="4,0,0,0" Background="{StaticResource BrushBgCard}" Foreground="{StaticResource BrushTextSecondary}"
+                              BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" Cursor="Hand"
+                              Click="ZombiesPlayersBtn_Click" />
+                <ToggleButton x:Name="ZombiesPlayers4Btn" Content="4 JOUEURS" FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                              Padding="14,5" Margin="4,0,0,0" Background="{StaticResource BrushBgCard}" Foreground="{StaticResource BrushTextSecondary}"
+                              BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" Cursor="Hand"
+                              Click="ZombiesPlayersBtn_Click" />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Text="MANCHE" Style="{StaticResource SectionLabelStyle}" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" VerticalAlignment="Center">
+            <TextBox x:Name="ZombiesRoundInput"
+                     Width="60" Height="32"
+                     FontFamily="Consolas" FontSize="14"
+                     VerticalContentAlignment="Center"
+                     HorizontalContentAlignment="Center"
+                     Background="{StaticResource BrushBgCard}"
+                     Foreground="{StaticResource BrushTextPrimary}"
+                     BorderBrush="{StaticResource BrushBorder}"
+                     BorderThickness="1"
+                     Margin="0,0,8,0"
+                     MaxLength="4"
+                     PreviewTextInput="ZombiesRoundInput_PreviewTextInput" />
+            <Button x:Name="ZombiesSetRoundButton" Content="ALLER À" FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                    Padding="12,8" Margin="0,0,16,0" Background="{StaticResource BrushBgCard}" Foreground="{StaticResource BrushTextPrimary}"
+                    BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" Cursor="Hand"
+                    Click="ZombiesSetRoundButton_Click" />
+            <Button x:Name="ZombiesRoundMinusBtn" Content="− 1" FontFamily="Consolas" FontSize="14" FontWeight="Bold"
+                    Padding="16,8" Background="{StaticResource BrushBgCard}" Foreground="{StaticResource BrushTextPrimary}"
+                    BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" Cursor="Hand"
+                    Click="ZombiesRoundMinusBtn_Click" />
+            <TextBlock x:Name="ZombiesRoundText" Text="1" FontFamily="Consolas" FontSize="22" FontWeight="Bold"
+                       Foreground="{StaticResource BrushAccentLight}" VerticalAlignment="Center"
+                       Margin="18,0,18,0" MinWidth="50" TextAlignment="Center" />
+            <Button x:Name="ZombiesRoundPlusBtn" Content="+ 1" FontFamily="Consolas" FontSize="14" FontWeight="Bold"
+                    Padding="16,8" Background="{StaticResource BrushAccentDark}" Foreground="{StaticResource BrushAccentLight}"
+                    BorderBrush="{StaticResource BrushAccent}" BorderThickness="1" Cursor="Hand"
+                    Click="ZombiesRoundPlusBtn_Click" />
+            <Button x:Name="ZombiesRoundResetBtn" Content="RÉINITIALISER" FontFamily="Consolas" FontSize="11" FontWeight="Bold"
+                    Padding="12,8" Margin="16,0,0,0" Background="#3D1010" Foreground="#FF6B6B"
+                    BorderBrush="#C0392B" BorderThickness="1" Cursor="Hand"
+                    Click="ZombiesRoundResetBtn_Click" />
+        </StackPanel>
+
+        <Border Background="{StaticResource BrushBgHistory}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="1" CornerRadius="10"
+                Padding="20,16" Margin="0,16,0,0"
+                HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,28,0">
+                    <TextBlock Text="ZOMBIES À TUER" FontFamily="Consolas" FontSize="11"
+                               Foreground="{StaticResource BrushTextSecondary}" Margin="0,0,0,4" />
+                    <TextBlock x:Name="ZombiesCountText" Text="—" FontFamily="Consolas" FontSize="36" FontWeight="Bold"
+                               Foreground="{StaticResource BrushAccentLight}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="HORDES" FontFamily="Consolas" FontSize="11"
+                               Foreground="{StaticResource BrushTextSecondary}" Margin="0,0,0,4" />
+                    <TextBlock x:Name="ZombiesHordesText" Text="—" FontFamily="Consolas" FontSize="36" FontWeight="Bold"
+                               Foreground="{StaticResource BrushAccentLight}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
 
     </Grid>
 </Window>
