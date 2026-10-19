@@ -208,7 +208,7 @@
         <Rectangle x:Name="DogSeparator" Grid.Row="2" Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" />
 
         <!-- Label manches spéciales -->
-        <TextBlock x:Name="DogLabel" Grid.Row="3" Text="MANCHES SPÉCIALES"
+        <TextBlock x:Name="DogLabel" Grid.Row="3" Text="SPECIAL ROUNDS"
                    Style="{StaticResource SectionLabelStyle}" />
 
         <!-- Contrôles manches spéciales -->
@@ -295,7 +295,7 @@
                 Padding="16,14" Margin="0,0,0,24"
                 Visibility="Collapsed">
             <StackPanel>
-                <TextBlock Text="HISTORIQUE DES MANCHES SPÉCIALES"
+                <TextBlock Text="SPECIAL ROUNDS HISTORY"
                            Style="{StaticResource SectionLabelStyle}" />
                 <WrapPanel x:Name="DogHistoryPanel" Orientation="Horizontal" />
             </StackPanel>
@@ -503,7 +503,7 @@
         <Rectangle x:Name="Bo2DogSeparator" Grid.Row="2"
                    Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Visibility="Collapsed" />
 
-        <TextBlock x:Name="Bo2DogLabel" Grid.Row="3" Text="MANCHES SPÉCIALES"
+        <TextBlock x:Name="Bo2DogLabel" Grid.Row="3" Text="SPECIAL ROUNDS"
                    Style="{StaticResource SectionLabelStyle}" Visibility="Collapsed" />
 
         <StackPanel x:Name="Bo2DogControlsPanel" Grid.Row="4" Margin="0,0,0,16" Visibility="Collapsed">
@@ -588,7 +588,7 @@
                 Padding="16,14" Margin="0,0,0,24"
                 Visibility="Collapsed">
             <StackPanel>
-                <TextBlock Text="HISTORIQUE DES MANCHES SPÉCIALES"
+                <TextBlock Text="SPECIAL ROUNDS HISTORY"
                            Style="{StaticResource SectionLabelStyle}" />
                 <WrapPanel x:Name="Bo2DogHistoryPanel" Orientation="Horizontal" />
             </StackPanel>
@@ -601,7 +601,7 @@
         <Rectangle x:Name="Bo2MobSeparator" Grid.Row="6"
                    Fill="{StaticResource BrushBorder}" Margin="0,0,0,16" Visibility="Collapsed" />
 
-        <TextBlock x:Name="Bo2MobLabel" Grid.Row="7" Text="MANCHES SPÉCIALES"
+        <TextBlock x:Name="Bo2MobLabel" Grid.Row="7" Text="SPECIAL ROUNDS"
                    Style="{StaticResource SectionLabelStyle}" Visibility="Collapsed" />
 
         <StackPanel x:Name="Bo2MobControlsPanel" Grid.Row="8" Margin="0,0,0,16" Visibility="Collapsed">
@@ -703,7 +703,7 @@
                 Padding="16,14" Margin="0,0,0,24"
                 Visibility="Collapsed">
             <StackPanel>
-                <TextBlock Text="HISTORIQUE DES MANCHES SPÉCIALES"
+                <TextBlock Text="SPECIAL ROUNDS HISTORY"
                            Style="{StaticResource SectionLabelStyle}" />
                 <WrapPanel x:Name="Bo2MobHistoryPanel" Orientation="Horizontal" />
             </StackPanel>

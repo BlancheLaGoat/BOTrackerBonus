@@ -357,7 +357,7 @@ namespace BO1Tracker
         {
             if (_owner == null || !_owner.IsBo1DogMapActive) return;
             BuildRoundSection(
-                title: "MANCHE SPÉCIALE",
+                title: "SPECIAL ROUND",
                 current: _owner.CurrentDogRoundForOverlay,
                 steps: [4, 5],
                 formatRound: r => _owner.FormatRoundForOverlay(r),
@@ -374,7 +374,7 @@ namespace BO1Tracker
             if (_owner.IsBo2DieRiseMapActive)
             {
                 BuildRoundSection(
-                    title: "MANCHE SPÉCIALE (DIE RISE)",
+                    title: "SPECIAL ROUND (DIE RISE)",
                     current: _owner.CurrentBo2DogRoundForOverlay,
                     steps: [4, 5],
                     formatRound: r => _owner.FormatRoundForOverlay(r),
@@ -384,7 +384,7 @@ namespace BO1Tracker
             else if (_owner.IsBo2MobMapActive)
             {
                 BuildRoundSection(
-                    title: "MANCHE SPÉCIALE (MOB OF THE DEAD)",
+                    title: "SPECIAL ROUND (MOB OF THE DEAD)",
                     current: _owner.CurrentBo2MobRoundForOverlay,
                     steps: [4, 5, 6],
                     formatRound: r => $"{r}",
