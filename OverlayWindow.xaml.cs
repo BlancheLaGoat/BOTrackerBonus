@@ -51,6 +51,12 @@ namespace BO1Tracker
         private static readonly Color ColAccent     = (Color)ColorConverter.ConvertFromString("#1D9E75");
         private static readonly Color ColAccentLight = (Color)ColorConverter.ConvertFromString("#2DD4A2");
         private static readonly Color ColAccentDark  = (Color)ColorConverter.ConvertFromString("#0D3327");
+
+        // ── "Rouge zombie" : utilisé uniquement pour les manches spéciales et les hordes,
+        // pour les distinguer visuellement du vert des bonus.
+        private static readonly Color ColZombieRed      = (Color)ColorConverter.ConvertFromString("#B3122A");
+        private static readonly Color ColZombieRedLight = (Color)ColorConverter.ConvertFromString("#FF4D5E");
+        private static readonly Color ColZombieRedDark  = (Color)ColorConverter.ConvertFromString("#330608");
         private static readonly Color ColBgCard      = (Color)ColorConverter.ConvertFromString("#1A1A1A");
         private static readonly Color ColBorder      = (Color)ColorConverter.ConvertFromString("#2A2A2A");
         private static readonly Color ColTextSecond  = (Color)ColorConverter.ConvertFromString("#888888");
@@ -69,8 +75,9 @@ namespace BO1Tracker
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             UpdateModeButtons();
+            ApplyOpaqueState(startOpaque: true); // ouverture en opaque par défaut (doit précéder ReadAndRefresh
+                                                  // pour que les cases soient construites avec le bon état dès le départ)
             ReadAndRefresh();
-            ApplyOpaqueState(startOpaque: true); // ouverture en opaque par défaut
             ApplyScale();
 
             var dir = Path.GetDirectoryName(SavePath)!;
@@ -301,7 +308,7 @@ namespace BO1Tracker
             {
                 Width = 52, Height = 52, Stretch = Stretch.Uniform,
                 Margin = new Thickness(0, 0, 0, 6),
-                Source = TryLoadImage(drop.ImagePath),
+                Source = LoadDropImage(drop.ImagePath),
             };
 
             var lblBlock = new TextBlock
@@ -334,7 +341,9 @@ namespace BO1Tracker
                 Padding         = new Thickness(14, 12, 14, 12),
                 CornerRadius    = new CornerRadius(10),
                 BorderThickness = new Thickness(2),
-                Background      = new SolidColorBrush(bgColor),
+                // En mode transparent (bouton OPAQUE/TRANSPARENT), le fond coloré de chaque case
+                // disparaît aussi : il ne reste que l'image/le texte flottant, comme le reste de l'overlay.
+                Background      = _opaqueBackground ? new SolidColorBrush(bgColor) : Brushes.Transparent,
                 BorderBrush     = new SolidColorBrush(borderColor),
                 Margin          = new Thickness(0, 0, 12, 0),
                 Cursor          = Cursors.Hand,
@@ -407,7 +416,7 @@ namespace BO1Tracker
             {
                 Text = current.HasValue ? formatRound(current.Value) : "—",
                 FontFamily = new FontFamily("Consolas"), FontSize = 22, FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(ColAccentLight),
+                Foreground = new SolidColorBrush(ColZombieRedLight),
             });
             RoundSectionPanel.Children.Add(currentBlock);
 
@@ -427,7 +436,7 @@ namespace BO1Tracker
             var badge = new Border
             {
                 Child           = label,
-                Background      = new SolidColorBrush(ColAccentDark),
+                Background      = new SolidColorBrush(ColZombieRedDark),
                 BorderThickness = new Thickness(0),
                 CornerRadius    = new CornerRadius(6),
                 Padding         = new Thickness(12, 8, 12, 8),
@@ -463,8 +472,8 @@ namespace BO1Tracker
             {
                 Text = $"{round}",
                 FontFamily = new FontFamily("Consolas"), FontSize = 18, FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(ColAccentLight), Background = Brushes.Transparent,
-                BorderThickness = new Thickness(0), CaretBrush = new SolidColorBrush(ColAccentLight),
+                Foreground = new SolidColorBrush(ColZombieRedLight), Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0), CaretBrush = new SolidColorBrush(ColZombieRedLight),
                 TextAlignment = TextAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
                 MinWidth = 48, Margin = new Thickness(8, 0, 8, 0),
             };
@@ -502,7 +511,7 @@ namespace BO1Tracker
             hordesBlock.Children.Add(new TextBlock
             {
                 Text = hordes.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture), FontFamily = new FontFamily("Consolas"), FontSize = 22, FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(ColAccentLight),
+                Foreground = new SolidColorBrush(ColZombieRedLight),
             });
             ZombiesSectionPanel.Children.Add(hordesBlock);
         }
@@ -516,7 +525,7 @@ namespace BO1Tracker
                     Text = label, FontFamily = new FontFamily("Consolas"), FontSize = 15, FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center,
                 },
-                Background      = new SolidColorBrush(ColAccentDark),
+                Background      = new SolidColorBrush(ColZombieRedDark),
                 BorderThickness = new Thickness(0),
                 CornerRadius    = new CornerRadius(6),
                 Padding         = new Thickness(10, 4, 10, 4),
@@ -570,7 +579,7 @@ namespace BO1Tracker
                 Height              = 52,
                 Stretch             = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Source              = TryLoadImage(imagePath),
+                Source              = LoadDropImage(imagePath),
             };
 
             var lblBlock = new TextBlock
@@ -599,7 +608,9 @@ namespace BO1Tracker
                 Padding         = new Thickness(14, 12, 14, 12),
                 CornerRadius    = new CornerRadius(10),
                 BorderThickness = new Thickness(2),
-                Background      = new SolidColorBrush(bgColor),
+                // En mode transparent (bouton OPAQUE/TRANSPARENT), le fond coloré de chaque case
+                // disparaît aussi : il ne reste que l'image/le texte flottant, comme le reste de l'overlay.
+                Background      = _opaqueBackground ? new SolidColorBrush(bgColor) : Brushes.Transparent,
                 BorderBrush     = new SolidColorBrush(borderColor),
                 Margin          = new Thickness(0, 0, 12, 0),
             };
@@ -656,7 +667,7 @@ namespace BO1Tracker
                 Stretch             = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin              = new Thickness(0, 0, 0, 6),
-                Source              = TryLoadLocationImage(location),
+                Source              = LoadLocationImage(location),
             };
 
             var lbl = new TextBlock
@@ -685,7 +696,9 @@ namespace BO1Tracker
                 Padding         = new Thickness(14, 12, 14, 12),
                 CornerRadius    = new CornerRadius(10),
                 BorderThickness = new Thickness(2),
-                Background      = new SolidColorBrush(bgColor),
+                // En mode transparent (bouton OPAQUE/TRANSPARENT), le fond coloré de chaque case
+                // disparaît aussi : il ne reste que l'image/le texte flottant, comme le reste de l'overlay.
+                Background      = _opaqueBackground ? new SolidColorBrush(bgColor) : Brushes.Transparent,
                 BorderBrush     = new SolidColorBrush(borderColor),
                 Margin          = new Thickness(0, 0, 12, 0),
             };
@@ -707,10 +720,65 @@ namespace BO1Tracker
             catch { return null; }
         }
 
-        private static BitmapImage? TryLoadLocationImage(string location)
+        /// <summary>Icônes de drops/emplacements : fond noir intégré à l'image, blanc pour le dessin.
+        /// Mode OPAQUE : image telle quelle. Mode TRANSPARENT : fond noir rendu transparent (par
+        /// luminance), pour que seul le dessin blanc flotte, comme le reste de l'overlay.</summary>
+        private readonly Dictionary<string, ImageSource?> _blackKeyedImageCache = [];
+
+        private ImageSource? LoadDropImage(string relativePath)
         {
-            return TryLoadImage($"Images/locations/{location}.png")
-                ?? TryLoadImage("Images/mystery_box.png");
+            var bmp = TryLoadImage(relativePath);
+            return ApplyBlackKeyIfTransparent(bmp, relativePath);
+        }
+
+        private ImageSource? LoadLocationImage(string location)
+        {
+            string path = $"Images/locations/{location}.png";
+            var bmp = TryLoadImage(path);
+            if (bmp == null) { path = "Images/mystery_box.png"; bmp = TryLoadImage(path); }
+            return ApplyBlackKeyIfTransparent(bmp, path);
+        }
+
+        private ImageSource? ApplyBlackKeyIfTransparent(BitmapImage? bmp, string cacheKey)
+        {
+            if (bmp == null) return null;
+            if (_opaqueBackground) return bmp;
+
+            if (!_blackKeyedImageCache.TryGetValue(cacheKey, out var keyed))
+            {
+                keyed = MakeBlackTransparent(bmp);
+                _blackKeyedImageCache[cacheKey] = keyed;
+            }
+            return keyed ?? bmp;
+        }
+
+        /// <summary>Convertit le fond noir d'une icône en transparence, en se basant sur la luminance
+        /// de chaque pixel (noir = alpha 0, blanc = alpha plein) : le dessin blanc reste intact,
+        /// seul le carré noir qui l'entoure disparaît.</summary>
+        private static BitmapSource? MakeBlackTransparent(BitmapSource src)
+        {
+            try
+            {
+                var converted = new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
+                int width = converted.PixelWidth, height = converted.PixelHeight;
+                if (width <= 0 || height <= 0) return src;
+                int stride = width * 4;
+                var pixels = new byte[height * stride];
+                converted.CopyPixels(pixels, stride, 0);
+
+                for (int i = 0; i < pixels.Length; i += 4)
+                {
+                    byte b = pixels[i], g = pixels[i + 1], r = pixels[i + 2], a = pixels[i + 3];
+                    double luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+                    pixels[i + 3] = (byte)(a * luminance);
+                }
+
+                var wb = new WriteableBitmap(width, height, converted.DpiX, converted.DpiY, PixelFormats.Bgra32, null);
+                wb.WritePixels(new Int32Rect(0, 0, width, height), pixels, stride, 0);
+                wb.Freeze();
+                return wb;
+            }
+            catch { return src; }
         }
 
         // ── Sélecteur de mode ────────────────────────────────────────────
@@ -789,7 +857,11 @@ namespace BO1Tracker
             OpaqueBtn.Content = _opaqueBackground ? "TRANSPARENT" : "OPAQUE";
         }
 
-        private void OpaqueButton_Click(object sender, RoutedEventArgs e) => ApplyOpaqueState(!_opaqueBackground);
+        private void OpaqueButton_Click(object sender, RoutedEventArgs e)
+        {
+            ApplyOpaqueState(!_opaqueBackground);
+            RebuildCards(); // reconstruit aussi les cases pour appliquer le fond transparent/opaque
+        }
 
         private bool _headerCollapsed = false;
 
