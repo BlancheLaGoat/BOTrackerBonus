@@ -1815,7 +1815,8 @@ public partial class MainWindow : Window
     {
         ZombiesRoundText.Text  = $"{_zombiesRound}";
         ZombiesCountText.Text  = $"{ZombiesPerRound.GetCount(_zombiesRound, _zombiesPlayers)}";
-        ZombiesHordesText.Text = $"{ZombiesPerRound.GetHordes(_zombiesRound, _zombiesPlayers):0.##}";
+        ZombiesHordesText.Text = ZombiesPerRound.GetHordes(_zombiesRound, _zombiesPlayers)
+            .ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
         foreach (var (btn, n) in new[] {
             (ZombiesPlayers1Btn, 1), (ZombiesPlayers2Btn, 2),

@@ -501,7 +501,7 @@ namespace BO1Tracker
             });
             hordesBlock.Children.Add(new TextBlock
             {
-                Text = hordes.ToString("0.##"), FontFamily = new FontFamily("Consolas"), FontSize = 22, FontWeight = FontWeights.Bold,
+                Text = hordes.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture), FontFamily = new FontFamily("Consolas"), FontSize = 22, FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(ColAccentLight),
             });
             ZombiesSectionPanel.Children.Add(hordesBlock);
