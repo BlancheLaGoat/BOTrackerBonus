@@ -307,7 +307,7 @@ public partial class MainWindow : Window
     // c'est l'identifiant du LOGICIEL, pas d'un compte. Tous les
     // utilisateurs de l'app partagent ce même Client ID, mais chacun
     // se connecte ensuite avec SON PROPRE compte Twitch.
-    private const string TwitchClientId = "COLLE_TON_CLIENT_ID_ICI";
+    private const string TwitchClientId = "7rqkqvjo28olg68jkf0c5ss01r9pbs";
 
     private TwitchConfig _twitchConfig = new();
     private string?      _twitchAccessToken = null;
