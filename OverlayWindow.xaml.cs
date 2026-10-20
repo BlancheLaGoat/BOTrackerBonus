@@ -69,7 +69,99 @@ namespace BO1Tracker
             InitializeComponent();
             Mode = mode;
             _owner = owner;
+            LoadOverlaySettings();
+
+            _saveSettingsTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+            _saveSettingsTimer.Tick += (_, _) => { _saveSettingsTimer.Stop(); SaveOverlaySettings(); };
+            SizeChanged     += (_, _) => ScheduleSaveSettings();
+            LocationChanged += (_, _) => ScheduleSaveSettings();
+
             Loaded += OnLoaded;
+        }
+
+        // ── Mémorisation de la taille/position/réglages de l'overlay ─────
+        // Fichier séparé de save.json (que l'overlay surveille) pour ne pas déclencher de rafraîchissement.
+        private static readonly string SettingsPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "BlackOpsTracker", "overlay.json");
+
+        private sealed class OverlaySettings
+        {
+            public bool   HasGeometry       { get; set; }
+            public double Left              { get; set; }
+            public double Top               { get; set; }
+            public double Width             { get; set; }
+            public double Height            { get; set; }
+            public int    ScaleIndex        { get; set; }
+            public bool   ShowSpecialRounds { get; set; } = true;
+            public bool   ShowZombiesHordes { get; set; } = true;
+        }
+
+        private readonly DispatcherTimer _saveSettingsTimer;
+
+        private void ScheduleSaveSettings()
+        {
+            if (!IsLoaded) return; // ignore les changements de taille/position faits pendant l'ouverture
+            _saveSettingsTimer.Stop();
+            _saveSettingsTimer.Start();
+        }
+
+        private void LoadOverlaySettings()
+        {
+            try
+            {
+                if (!File.Exists(SettingsPath)) return;
+                var s = JsonSerializer.Deserialize<OverlaySettings>(File.ReadAllText(SettingsPath));
+                if (s == null) return;
+
+                _scaleIndex        = Math.Clamp(s.ScaleIndex, 0, ScaleLevels.Length - 1);
+                _showSpecialRounds = s.ShowSpecialRounds;
+                _showZombiesHordes = s.ShowZombiesHordes;
+                RoundsVisibilityBtn.Content = _showSpecialRounds ? "MANCHES" : "MANCHES ✕";
+                HordesVisibilityBtn.Content = _showZombiesHordes ? "HORDES"  : "HORDES ✕";
+
+                if (s.HasGeometry && s.Width >= MinWidth && s.Height >= MinHeight)
+                {
+                    Width  = s.Width;
+                    Height = s.Height;
+
+                    // Position rétablie seulement si la fenêtre reste visible (écran débranché, résolution changée...).
+                    double vl = SystemParameters.VirtualScreenLeft, vt = SystemParameters.VirtualScreenTop;
+                    double vw = SystemParameters.VirtualScreenWidth, vh = SystemParameters.VirtualScreenHeight;
+                    bool visible = s.Left + s.Width > vl + 80 && s.Left < vl + vw - 80
+                                && s.Top + 40 > vt && s.Top < vt + vh - 40;
+                    if (visible)
+                    {
+                        WindowStartupLocation = WindowStartupLocation.Manual;
+                        Left = s.Left;
+                        Top  = s.Top;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>Enregistre taille, position et réglages (taille globale, manches/hordes affichées).</summary>
+        internal void SaveOverlaySettings()
+        {
+            try
+            {
+                if (!IsLoaded) return;
+                var b = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+                if (b.IsEmpty || b.Width <= 0 || b.Height <= 0) return;
+
+                var s = new OverlaySettings
+                {
+                    HasGeometry = true,
+                    Left = b.Left, Top = b.Top, Width = b.Width, Height = b.Height,
+                    ScaleIndex = _scaleIndex,
+                    ShowSpecialRounds = _showSpecialRounds,
+                    ShowZombiesHordes = _showZombiesHordes,
+                };
+                Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
+                File.WriteAllText(SettingsPath, JsonSerializer.Serialize(s));
+            }
+            catch { }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -196,6 +288,7 @@ namespace BO1Tracker
             _showSpecialRounds = !_showSpecialRounds;
             RoundsVisibilityBtn.Content = _showSpecialRounds ? "MANCHES" : "MANCHES ✕";
             RebuildCards();
+            ScheduleSaveSettings();
         }
 
         private void HordesVisibilityButton_Click(object sender, RoutedEventArgs e)
@@ -203,6 +296,7 @@ namespace BO1Tracker
             _showZombiesHordes = !_showZombiesHordes;
             HordesVisibilityBtn.Content = _showZombiesHordes ? "HORDES" : "HORDES ✕";
             RebuildCards();
+            ScheduleSaveSettings();
         }
 
         // ── Activer/désactiver les bonus optionnels (Carpenter, Fire Sale, ...) depuis l'overlay ──
@@ -827,6 +921,7 @@ namespace BO1Tracker
         {
             _scaleIndex = (_scaleIndex + 1) % ScaleLevels.Length;
             ApplyScale();
+            ScheduleSaveSettings();
         }
 
         private void ApplyScale()
@@ -878,6 +973,10 @@ namespace BO1Tracker
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
         private void OverlayWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
-            => _watcher?.Dispose();
+        {
+            _saveSettingsTimer.Stop();
+            SaveOverlaySettings();
+            _watcher?.Dispose();
+        }
     }
 }

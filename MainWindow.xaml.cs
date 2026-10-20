@@ -1586,6 +1586,7 @@ public partial class MainWindow : Window
         StopResetTracker();
         Disconnect();
         SaveState();
+        _overlay?.SaveOverlaySettings(); // taille/position de l'overlay mémorisées à la fermeture
     }
 
     // ================================================================
