@@ -48,6 +48,9 @@ class TwitchAuthResult
     public string? UserId        { get; init; }
     public string? Login         { get; init; }
     public int     ExpiresIn     { get; init; } = 0; // secondes ; 0 si inconnu
+    /// <summary>True si Twitch a explicitement refusé le refresh token (expiré/révoqué) :
+    /// seul cas où une vraie reconnexion manuelle est nécessaire.</summary>
+    public bool    Rejected      { get; init; }
 }
 
 static class TwitchAuthService
@@ -125,6 +128,7 @@ static class TwitchAuthService
                         RefreshToken = token.refresh_token,
                         UserId       = user.Id,
                         Login        = user.Login,
+                        ExpiresIn    = token.expires_in,
                     };
                 }
 
@@ -159,7 +163,19 @@ static class TwitchAuthService
             var resp = await Http.PostAsync(TokenUrl, req, ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
             if (!resp.IsSuccessStatusCode)
-                return new TwitchAuthResult { Success = false, Error = "Le token a expiré, reconnecte-toi à Twitch." };
+            {
+                // 400/401 = refresh token refusé (expiré ou révoqué). Tout autre code (5xx, limite...)
+                // est transitoire : on ne demande PAS de se reconnecter, on réessaiera plus tard.
+                bool rejected = (int)resp.StatusCode is 400 or 401;
+                return new TwitchAuthResult
+                {
+                    Success  = false,
+                    Rejected = rejected,
+                    Error    = rejected
+                        ? "Ta session Twitch a expiré, reconnecte-toi à Twitch."
+                        : $"Twitch indisponible pour le moment ({(int)resp.StatusCode}), nouvel essai au prochain envoi.",
+                };
+            }
 
             var token = JsonSerializer.Deserialize<TwitchTokenResponse>(body,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
@@ -175,11 +191,13 @@ static class TwitchAuthService
                 RefreshToken = token.refresh_token ?? refreshToken,
                 UserId       = user?.Id,
                 Login        = user?.Login,
+                ExpiresIn    = token.expires_in,
             };
         }
         catch (Exception ex)
         {
-            return new TwitchAuthResult { Success = false, Error = ex.Message };
+            // Pas de réseau / timeout : ce n'est pas un token invalide, on garde la session.
+            return new TwitchAuthResult { Success = false, Error = $"Impossible de joindre Twitch ({ex.Message}), nouvel essai au prochain envoi." };
         }
     }
 
@@ -257,8 +275,10 @@ static class TwitchChatListener
     private static CancellationTokenSource? _cts;
     private static int _generation = 0; // permet d'ignorer les anciennes boucles après un Stop()/Start()
 
+    /// <param name="getToken">Fournit un access token valide (paramètre : forcer un rafraîchissement).
+    /// Appelé à chaque (re)connexion du WebSocket : un token mémorisé au démarrage serait périmé après ~4 h.</param>
     public static void Start(
-        string clientId, string accessToken, string broadcasterId, string userId,
+        string clientId, Func<bool, Task<string?>> getToken, string broadcasterId, string userId,
         Action<string, string, string> onChatMessage, // (chatterId, chatterLogin, text)
         Action<string> onStatus)
     {
@@ -266,7 +286,7 @@ static class TwitchChatListener
         _cts = new CancellationTokenSource();
         int myGen = ++_generation;
         var ct = _cts.Token;
-        _ = Task.Run(() => RunLoopAsync(myGen, clientId, accessToken, broadcasterId, userId, onChatMessage, onStatus, ct), ct);
+        _ = Task.Run(() => RunLoopAsync(myGen, clientId, getToken, broadcasterId, userId, onChatMessage, onStatus, ct), ct);
     }
 
     public static void Stop()
@@ -278,7 +298,7 @@ static class TwitchChatListener
     }
 
     private static async Task RunLoopAsync(
-        int myGen, string clientId, string accessToken, string broadcasterId, string userId,
+        int myGen, string clientId, Func<bool, Task<string?>> getToken, string broadcasterId, string userId,
         Action<string, string, string> onChatMessage, Action<string> onStatus, CancellationToken ct)
     {
         string url = WsUrl;
@@ -316,7 +336,20 @@ static class TwitchChatListener
                     if (msgType == "session_welcome")
                     {
                         var sessionId = root.GetProperty("payload").GetProperty("session").GetProperty("id").GetString()!;
+                        var accessToken = await getToken(false);
+                        if (accessToken == null)
+                        {
+                            onStatus("Erreur abonnement chat : session Twitch indisponible (reconnexion nécessaire ?).");
+                            continue;
+                        }
                         var (ok, err) = await CreateSubscriptionAsync(clientId, accessToken, broadcasterId, userId, sessionId);
+                        if (!ok && err != null && err.StartsWith("HTTP 401"))
+                        {
+                            // Token périmé : on force un rafraîchissement puis on retente une fois.
+                            var fresh = await getToken(true);
+                            if (fresh != null)
+                                (ok, err) = await CreateSubscriptionAsync(clientId, fresh, broadcasterId, userId, sessionId);
+                        }
                         onStatus(ok ? "Connecté à Twitch — écoute du chat active." : $"Erreur abonnement chat : {err}");
                     }
                     else if (msgType == "session_reconnect")

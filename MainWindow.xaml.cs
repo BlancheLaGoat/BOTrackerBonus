@@ -311,6 +311,8 @@ public partial class MainWindow : Window
 
     private TwitchConfig _twitchConfig = new();
     private string?      _twitchAccessToken = null;
+    private DateTime     _twitchAccessTokenExpiresAt = DateTime.MinValue; // UTC
+    private readonly SemaphoreSlim _twitchTokenLock = new(1, 1);         // un seul rafraîchissement à la fois
     private CancellationTokenSource? _twitchAuthCts = null;
 
     private void SaveTwitchConfig()
@@ -369,6 +371,15 @@ public partial class MainWindow : Window
             var (success, error) = await TwitchChatService.SendMessageAsync(
                 _twitchConfig.TwitchClientId, token, _twitchConfig.TwitchUserId, _twitchConfig.TwitchUserId, message);
 
+            // 401 = access token périmé/révoqué côté Twitch : on le rafraîchit et on retente une fois.
+            if (!success && error != null && error.StartsWith("HTTP 401"))
+            {
+                var fresh = await EnsureTwitchAccessTokenAsync(forceRefresh: true);
+                if (fresh != null)
+                    (success, error) = await TwitchChatService.SendMessageAsync(
+                        _twitchConfig.TwitchClientId, fresh, _twitchConfig.TwitchUserId, _twitchConfig.TwitchUserId, message);
+            }
+
             Dispatcher.Invoke(() =>
             {
                 if (success) SetTwitchStatus($"Envoyé : \"{message}\"", isError: false);
@@ -377,25 +388,39 @@ public partial class MainWindow : Window
         });
     }
 
-    /// <summary>Retourne un access token valide, en rafraîchissant via le refresh token si besoin.</summary>
-    private async Task<string?> EnsureTwitchAccessTokenAsync()
+    /// <summary>Retourne un access token valide. Un access token Twitch ne dure qu'environ 4 h :
+    /// on le rafraîchit automatiquement avec le refresh token dès qu'il approche de l'expiration
+    /// (ou si <paramref name="forceRefresh"/> après un 401). Les appels sont sérialisés : le refresh
+    /// token change à chaque rafraîchissement, deux rafraîchissements simultanés se feraient échec.</summary>
+    private async Task<string?> EnsureTwitchAccessTokenAsync(bool forceRefresh = false)
     {
-        if (_twitchAccessToken != null) return _twitchAccessToken;
-        if (string.IsNullOrWhiteSpace(_twitchConfig.TwitchRefreshToken)) return null;
-
-        var result = await TwitchAuthService.RefreshAsync(_twitchConfig.TwitchClientId, _twitchConfig.TwitchRefreshToken);
-        if (!result.Success || result.AccessToken == null)
+        await _twitchTokenLock.WaitAsync();
+        try
         {
-            Dispatcher.Invoke(() => SetTwitchStatus(result.Error ?? "Reconnexion Twitch nécessaire.", isError: true));
-            return null;
-        }
+            bool stillValid = _twitchAccessToken != null
+                           && DateTime.UtcNow < _twitchAccessTokenExpiresAt.AddMinutes(-5);
+            if (stillValid && !forceRefresh) return _twitchAccessToken;
 
-        _twitchAccessToken = result.AccessToken;
-        _twitchConfig.TwitchRefreshToken = result.RefreshToken ?? _twitchConfig.TwitchRefreshToken;
-        if (result.UserId != null) _twitchConfig.TwitchUserId = result.UserId;
-        if (result.Login  != null) _twitchConfig.TwitchLogin  = result.Login;
-        SaveTwitchConfig();
-        return _twitchAccessToken;
+            if (string.IsNullOrWhiteSpace(_twitchConfig.TwitchRefreshToken)) return null;
+
+            var result = await TwitchAuthService.RefreshAsync(_twitchConfig.TwitchClientId, _twitchConfig.TwitchRefreshToken);
+            if (!result.Success || result.AccessToken == null)
+            {
+                Dispatcher.Invoke(() => SetTwitchStatus(result.Error ?? "Reconnexion Twitch nécessaire.", isError: true));
+                // Échec transitoire (réseau, Twitch indisponible) : on garde l'ancien token s'il n'a pas
+                // encore expiré pour de bon ; on ne perd jamais la session pour une simple coupure.
+                return (!result.Rejected && stillValid) ? _twitchAccessToken : null;
+            }
+
+            _twitchAccessToken = result.AccessToken;
+            _twitchAccessTokenExpiresAt = DateTime.UtcNow.AddSeconds(result.ExpiresIn > 0 ? result.ExpiresIn : 3600);
+            _twitchConfig.TwitchRefreshToken = result.RefreshToken ?? _twitchConfig.TwitchRefreshToken;
+            if (result.UserId != null) _twitchConfig.TwitchUserId = result.UserId;
+            if (result.Login  != null) _twitchConfig.TwitchLogin  = result.Login;
+            SaveTwitchConfig();
+            return _twitchAccessToken;
+        }
+        finally { _twitchTokenLock.Release(); }
     }
 
     private void SetTwitchStatus(string text, bool isError)
@@ -411,7 +436,7 @@ public partial class MainWindow : Window
         if (_twitchAccessToken == null || string.IsNullOrWhiteSpace(_twitchConfig.TwitchUserId)) return;
 
         TwitchChatListener.Start(
-            _twitchConfig.TwitchClientId, _twitchAccessToken, _twitchConfig.TwitchUserId, _twitchConfig.TwitchUserId,
+            _twitchConfig.TwitchClientId, force => EnsureTwitchAccessTokenAsync(force), _twitchConfig.TwitchUserId, _twitchConfig.TwitchUserId,
             onChatMessage: (chatterId, chatterLogin, text) => Dispatcher.Invoke(() => OnTwitchChatMessage(chatterId, text)),
             onStatus: status => Dispatcher.Invoke(() => SetTwitchStatus(status, isError: status.Contains("Erreur") || status.Contains("perdue"))));
     }
@@ -472,6 +497,7 @@ public partial class MainWindow : Window
                 if (result.Success)
                 {
                     _twitchAccessToken = result.AccessToken;
+                    _twitchAccessTokenExpiresAt = DateTime.UtcNow.AddSeconds(result.ExpiresIn > 0 ? result.ExpiresIn : 3600);
                     _twitchConfig.TwitchRefreshToken = result.RefreshToken ?? "";
                     _twitchConfig.TwitchUserId       = result.UserId ?? "";
                     _twitchConfig.TwitchLogin        = result.Login ?? "";
@@ -492,6 +518,7 @@ public partial class MainWindow : Window
         _twitchAuthCts?.Cancel();
         TwitchChatListener.Stop();
         _twitchAccessToken = null;
+        _twitchAccessTokenExpiresAt = DateTime.MinValue;
         _twitchConfig.TwitchRefreshToken = "";
         _twitchConfig.TwitchUserId = "";
         _twitchConfig.TwitchLogin = "";
